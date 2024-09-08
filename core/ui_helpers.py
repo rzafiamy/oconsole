@@ -6,18 +6,19 @@ import time
 
 class UIHelpers:
     def __init__(self):
-        pass
+        self.spinner = None
 
     def start_spinner(self, text):
-        spinner = Halo(text=text, spinner='dots')
-        spinner.start()
-        return spinner
+        self.spinner = Halo(text=text, spinner='dots')
+        self.spinner.start()
+        return self.spinner
 
     def stop_spinner(self, spinner, success=True, message=""):
-        if success:
-            spinner.succeed(message)
-        else:
-            spinner.fail(message)
+        if self.spinner:
+            if success:
+                self.spinner.succeed(message)
+            else:
+                self.spinner.fail(message)
 
     def display_progress_bar(self, duration=2, steps=10):
         with tqdm(total=100, desc="Running command", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]") as pbar:

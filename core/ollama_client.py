@@ -39,3 +39,31 @@ class OllamaClient:
         except Exception as e:
             self.ui_helpers.stop_spinner(spinner, success=False, message=f"Error generating response: {str(e)}")
             return f"Error generating response: {str(e)}"
+
+    def get_streaming_response(self, prompt, stream_callback):
+        """
+        Uses Ollama's LLaMA model to generate a streaming response with history.
+        Calls a callback function (stream_callback) to handle each chunk of the response.
+        """
+        # spinner = self.ui_helpers.start_spinner('Generating response with LLM (streaming)')
+        # Stop the spinner before starting to stream response
+        self.ui_helpers.stop_spinner(None, success=True, message="Processing your question...")
+
+        # Add the user's prompt to the history
+        self.add_to_history("user", prompt)
+
+        try:
+            # Stream the response from the LLM
+            response = ollama.chat(
+                model=config.OLLAMA_MODEL,
+                messages=self.history,
+                stream=True,  # Enable streaming
+                options={'max_tokens': config.OLLAMA_MAX_TOKENS, 'temperature': config.OLLAMA_TEMPERATURE}
+            )
+            for chunk in response:  # Stream chunks of the response
+                stream_callback(chunk['message']['content'])  # Call the callback with each chunk
+                self.add_to_history("assistant", chunk['message']['content'])  # Append the chunk to history
+            # self.ui_helpers.stop_spinner(spinner, success=True, message="Response generated")
+        except Exception as e:
+            #self.ui_helpers.stop_spinner(spinner, success=False, message=f"Error generating response: {str(e)}")
+            return f"Error generating response: {str(e)}"
