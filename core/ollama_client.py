@@ -1,6 +1,7 @@
 # core/ollama_client.py
 import ollama
 from core.ui_helpers import UIHelpers
+import config
 
 class OllamaClient:
     def __init__(self):
@@ -16,21 +17,22 @@ class OllamaClient:
     def get_chat_response(self, prompt):
         """
         Uses Ollama's LLaMA model to generate a chat response with history.
+        The prompt can include previous command output as context.
         """
-        spinner = self.ui_helpers.start_spinner('Generating command with LLM')
+        spinner = self.ui_helpers.start_spinner('Generating response with LLM')
 
         # Add the user's prompt to the history
         self.add_to_history("user", prompt)
 
         try:
             response = ollama.chat(
-                model='llama3.1:latest', 
+                model=config.OLLAMA_MODEL,
                 messages=self.history,  # Pass history to the chat method
-                options={'max_tokens': 50, 'temperature': 0.5}
+                options={'max_tokens': config.OLLAMA_MAX_TOKENS, 'temperature': config.OLLAMA_TEMPERATURE}
             )
-            self.ui_helpers.stop_spinner(spinner, success=True, message="Command generated")
+            self.ui_helpers.stop_spinner(spinner, success=True, message="Response generated")
             
-            # Store the assistant's response to the history
+            # Store the assistant's response in the history
             self.add_to_history("assistant", response['message']['content'])
 
             return response['message']['content']

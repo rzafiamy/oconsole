@@ -1,7 +1,7 @@
 # manager.py
 from core.ollama_client import OllamaClient
-from core.command_executor import CommandExecutor
 from colorama import Fore, Style
+from core.command_executor import CommandExecutor
 from core.ui_helpers import UIHelpers
 from core.storage import Storage
 import config
@@ -12,6 +12,7 @@ class TaskManager:
         self.command_executor = CommandExecutor()
         self.ui_helpers = UIHelpers()
         self.storage = Storage(config.HISTORY_FILE)
+        self.last_command_output = None  # Store the last command output here
 
     def automate_task(self, task_description):
         """
@@ -26,27 +27,31 @@ class TaskManager:
             if self.ui_helpers.confirm_execution(command):
                 self.ui_helpers.display_progress_bar()
                 result = self.command_executor.run_command(command.strip())
-                
-                # Store the executed command in the history file
+
+                # Store the output of the command for context in later questions
+                self.last_command_output = result
                 self.storage.store_command(command.strip())
-                
+
                 self.ui_helpers.show_final_output(result)
             else:
                 print(f"{Fore.RED}Command not run.")
         else:
             print(f"{Fore.RED}No command generated.")
 
-    def display_history(self):
+    def ask_about_output(self, question):
         """
-        Loads and displays the command history from the file.
+        Allows the user to ask questions about the last command output.
         """
-        history = self.storage.load_history()
-        if history:
-            print(f"{Fore.MAGENTA}Command History:")
-            for index, command in enumerate(history, 1):
-                print(f"{Fore.CYAN}{index}. {command}")
-        else:
-            print(f"{Fore.RED}No history available.")
+        if not self.last_command_output:
+            print(f"{Fore.RED}No command output available to ask questions about.")
+            return
+
+        # Combine the last command output with the user's question
+        context = f"Here is the command output:\n{self.last_command_output}\n\nNow, {question}"
+        
+        # Pass the context along with the question to the LLM
+        response = self.ollama_client.get_chat_response(context)
+        print(f"{Fore.CYAN}Answer:\n{response}")
 
     def start(self):
         """
@@ -54,12 +59,15 @@ class TaskManager:
         """
         print(f"{Fore.MAGENTA}Welcome to the Python LLM-powered command interpreter!")
         while True:
-            task = input(f"{Fore.LIGHTYELLOW_EX}Describe the task (or type 'exit' to quit, 'history' to view command history): ")
+            task = input(f"{Fore.LIGHTYELLOW_EX}Describe the task (or type 'exit' to quit, 'history' to view command history, 'ask' to ask questions about the last command output): ")
             if task.lower() == 'exit':
                 print(f"{Fore.GREEN}Exiting...")
                 break
             elif task.lower() == 'history':
                 self.display_history()
+            elif task.lower() == 'ask':
+                question = input(f"{Fore.LIGHTYELLOW_EX}What do you want to ask about the last command output?: ")
+                self.ask_about_output(question)
             else:
                 self.automate_task(task)
 

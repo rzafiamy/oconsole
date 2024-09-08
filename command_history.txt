@@ -2,3 +2,35 @@ ls
 grep -h "\.md$" *
 clear
 uname -r
+ffmpeg -f x11grab -r 30 -s 1920x1080 -i :0.0 -sameq out.mp4
+clear
+sudo apt-get install firefox
+sudo apt autoremove
+ufw status
+clear
+ls -lh ~/Downloads | grep "M"
+ls -lh ~/Téléchargements/ | grep "M"
+ls -hSlS ~/Téléchargements/ | grep "M"
+rm ~/Téléchargements/*.mkv
+find ~/Téléchargements/ -type f -name "*.mkv" -exec rm {} \;
+find ~/Téléchargements/ -type f -size +1G
+find ~/Téléchargements/ -type f -size +1G -exec rm {} \;
+lsblk -d -o NAME,FSTYPE,LABEL,MOUNTPOINT,SIZE,MAJ:MIN,RMABLE,NMABLE,SWAPFS
+lsblk -d -o NAME,FSTYPE,LABEL,MOUNTPOINT,SIZE,MAJ:MIN,SWAP,SYSID
+lsblk -d -o NAME,FSTYPE,LABEL,MOUNTPOINT,SIZE,MAJ:MIN,RMABLE,NMABLE,SWAPFS
+lsblk -d -o NAME,FSTYPE,LABEL,MOUNTPOINT,SIZE,MAJ:MIN
+df -h
+du -sh /* | sort -h
+clear
+mv ~/Téléchargements/*.{jpg,jpeg,png,gif} ~/Téléchargements/a_images/
+mv ~/Téléchargements/*.{jpg,jpeg,png,gif} ~/Téléchargements/a_image/
+mv ~/Téléchargements/*.{webp} ~/Téléchargements/a_image/
+clear
+ls -l /home/Documents/DEV | wc -l
+ls -l ~/Documents/DEV | wc -l
+ls -l ~/Documents/Dev | wc -l
+dmesg | grep "ufw" | tail -1
+sudo dmesg | grep "ufw" | tail -1
+dmesg | grep UFW | tail -1
+netstat -tlnp
+ss -tlpn

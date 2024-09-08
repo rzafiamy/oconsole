@@ -146,6 +146,26 @@ Running command | ████████████████████�
 1. ls /home
 ```
 
+Another example about follow up questions : 
+```bash
+$ python manager.py
+🟣 Welcome to the Python LLM-powered command interpreter!
+
+💡 Describe the task (or type 'exit' to quit, 'history' to view command history, 'ask' to ask questions about the last command output): List files in /home
+💡 Generated command: ls /home
+❓ Do you want to run this command? (y/n): y
+
+Running command | ████████████████████████████████████████████████| 100/100 [00:02]
+🟢 Command output:
+  user1  user2  shared
+
+💡 Describe the task (or type 'exit' to quit, 'history' to view command history, 'ask' to ask questions about the last command output): ask
+💡 What do you want to ask about the last command output?: What is the size of the files in /home?
+
+🟣 Answer:
+There was no specific file size information in the output. You can run the command `du -sh /home/*` to get the sizes of the directories or files.
+
+```
 ---
 
 ## 🤝 Contributing
