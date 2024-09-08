@@ -1,0 +1,5 @@
+ollama
+colorama
+halo
+tqdm
+tabulate

@@ -1,0 +1,4 @@
+ls
+grep -h "\.md$" *
+clear
+uname -r
