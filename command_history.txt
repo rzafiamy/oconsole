@@ -75,3 +75,10 @@ sync && sync; echo 3,2,{9:00}> /proc/sys/kernel/halt_timeout
 date
 clear
 code .
+clear
+git log
+clear
+ls -l ~/Documents/Dev | grep .git
+find ~/Documents/Dev -type d -name .git
+ps aux | sort -k 4 -rn | head
+`systemctl status && uptime && free -h && df -h && cat /proc/cpuinfo && cat /proc/meminfo`

@@ -1,10 +1,10 @@
-# manager.py
 from core.ollama_client import OllamaClient
 from colorama import Fore
 from core.command_executor import CommandExecutor
 from core.ui_helpers import UIHelpers
 from core.storage import Storage
 import config
+import readline
 
 class TaskManager:
     def __init__(self):
@@ -13,6 +13,7 @@ class TaskManager:
         self.ui_helpers = UIHelpers()
         self.storage = Storage(config.HISTORY_FILE)
         self.last_command_output = None  # Store the last command output here
+        self.command_history = []  # Store the history of commands typed
 
     def automate_task(self, task_description):
         """
@@ -36,6 +37,7 @@ class TaskManager:
                 # Store the output of the command for context in later questions
                 self.last_command_output = result
                 self.storage.store_command(command.strip())
+                self.command_history.append(task_description)  # Add to history
 
                 # self.ui_helpers.show_final_output(result)
             else:
@@ -70,6 +72,14 @@ class TaskManager:
             print(f"{Fore.MAGENTA}Streaming response:")
             self.ollama_client.get_streaming_response(context, stream_callback)
 
+    def display_history(self):
+        """
+        Display the command history.
+        """
+        print(f"{Fore.GREEN}Command History:")
+        for i, command in enumerate(self.command_history, 1):
+            print(f"{i}. {command}")
+
     def start(self):
         """
         Starts an interactive command-line loop for automating tasks.
@@ -77,6 +87,11 @@ class TaskManager:
         print(f"{Fore.MAGENTA}-"*100)
         print(f"{Fore.MAGENTA}Welcome to the Python LLM-powered command interpreter!")
         print(f"{Fore.MAGENTA}-"*100)
+        
+        # Load command history into readline
+        for cmd in self.storage.load_history():
+            readline.add_history(cmd)
+
         while True:
             #add new line
             print()
@@ -86,6 +101,10 @@ class TaskManager:
             print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'ask' to ask questions about the last command output")
 
             task = input(f"{Fore.LIGHTYELLOW_EX}>>: ")
+            
+            # Add input to readline history
+            readline.add_history(task)
+            
             if task.lower() == 'exit':
                 print(f"{Fore.GREEN}Exiting...")
                 break
