@@ -34,3 +34,44 @@ sudo dmesg | grep "ufw" | tail -1
 dmesg | grep UFW | tail -1
 netstat -tlnp
 ss -tlpn
+echo $DESKTOP_SESSION
+echo $XDG_SESSION_TYPE
+crontab -l
+python -c 'import site; print(site.getsitepackages())'
+find ~/Téléchargements -maxdepth 1 -name "*.pdf" -exec mv {} ~/Téléchargements/a_document/ \;
+ls -la
+mv ~/Téléchargements/*.wav ~/Téléchargements/a_music/
+rm ~/Téléchargements/*.json
+mv ~/Téléchargements/*.deb ~/Téléchargements/a_other/
+mv ~/Téléchargements/*.docx ~/Téléchargements/a_document/
+mv ~/Téléchargements/*.zip ~/Téléchargements/a_other/
+mv ~/Téléchargements/*.mp3 ~/Téléchargements/a_music/
+ls ~/Téléchargements/
+rm ~/Téléchargements/*.torrent
+mv ~/Téléchargements/*.epub ~/Téléchargements/a_document/
+rm -rf ~/Téléchargements/test
+find ~/Téléchargements/ -type d -empty -print
+rm -rf ~/Téléchargements/Test; rm -rf ~/Téléchargements/thunderbird.tmp
+clear
+openssl s_client -connect infodev.ovh:443 -servername infodev.ovh -status
+dig +short infodev.ovh | grep -oE '[0-9.]+' | head -1
+clear
+apt-get update && apt-get install unattended-upgrades
+ps -ef | grep firefox
+clear
+uname -r
+nvidia-smi
+echo "Hello"
+systemctl status
+clear
+code .
+date; echo $(($(date +%s)/3600))
+echo $SECONDS
+history | tail
+ifconfig -a
+sudo shutdown -h +10
+shutdown -c
+sync && sync; echo 3,2,{9:00}> /proc/sys/kernel/halt_timeout
+date
+clear
+code .

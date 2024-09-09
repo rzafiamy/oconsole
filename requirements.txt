@@ -3,3 +3,4 @@ colorama
 halo
 tqdm
 tabulate
+pexpect
