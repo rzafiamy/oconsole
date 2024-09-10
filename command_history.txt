@@ -82,3 +82,6 @@ ls -l ~/Documents/Dev | grep .git
 find ~/Documents/Dev -type d -name .git
 ps aux | sort -k 4 -rn | head
 `systemctl status && uptime && free -h && df -h && cat /proc/cpuinfo && cat /proc/meminfo`
+echo "source /home/cook/Documents/virtual-env/oconsole/bin/activate; python ~/Documents/Dev/oconsole/main.py" >> ~/Documents/run.sh && chmod +x ~/Documents/run.sh
+clear
+touch oconsole.sh.example && echo "source venv/bin/activate; python manager.py" >> oconsole.sh.example
