@@ -4,3 +4,4 @@ halo
 tqdm
 tabulate
 pexpect
+python-dotenv

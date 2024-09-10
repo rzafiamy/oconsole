@@ -47,13 +47,28 @@
     pip install -r requirements.txt
     ```
 
-3. **Set up the environment** (if necessary):
-   
-   You might need to configure your `OLLAMA_API_KEY` in an environment variable:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3. **Copy .env.example to .env**:
+
+You'll need to create a .env file by copying the provided .env.example file:
 
     ```bash
-    export OLLAMA_API_KEY="your_api_key_here"
+    Copier le code
+    cp .env.example .env
     ```
+
+Then, open the .env file and fill in the required environment variables like HOST and API_KEY:
+
+    ```bash
+    Copier le code
+    HOST=http://localhost:11434
+    API_KEY=your_api_key_here
+    ```
+
+Set API_KEY to empty if not required by your env
 
 ---
 

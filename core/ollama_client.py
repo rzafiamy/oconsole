@@ -1,10 +1,16 @@
 # core/ollama_client.py
 import ollama
+from ollama import Client
 from core.ui_helpers import UIHelpers
 import config
 
 class OllamaClient:
     def __init__(self):
+        headers = {}
+        if config.OLLAMA_API_KEY:
+            headers = {'Authorization': f'Bearer {config.OLLAMA_API_KEY}'}
+        
+        self.client = Client(host=config.OLLAMA_HOST, headers=headers)
         self.ui_helpers = UIHelpers()
         self.history = []
 
@@ -25,7 +31,7 @@ class OllamaClient:
         self.add_to_history("user", prompt)
 
         try:
-            response = ollama.chat(
+            response = self.client.chat(
                 model=config.OLLAMA_MODEL,
                 messages=self.history,  # Pass history to the chat method
                 options={'max_tokens': config.OLLAMA_MAX_TOKENS, 'temperature': config.OLLAMA_TEMPERATURE}
@@ -54,7 +60,7 @@ class OllamaClient:
 
         try:
             # Stream the response from the LLM
-            response = ollama.chat(
+            response = self.client.chat(
                 model=config.OLLAMA_MODEL,
                 messages=self.history,
                 stream=True,  # Enable streaming
