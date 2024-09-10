@@ -80,7 +80,7 @@ class TaskManager:
                     self.storage.store_command(suggestion.strip())
                     self.command_history.append(f"Retry for: {command}")
                 else:
-                    print(f"{Fore.RED}Retry failed. Error: {result.error}")
+                    print(f"{Fore.RED}Retry failed. Error: {result['error']}")
             else:
                 print(f"{Fore.RED}Suggested command not run.")
         else:
