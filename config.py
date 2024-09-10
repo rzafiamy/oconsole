@@ -12,4 +12,5 @@ OLLAMA_API_KEY = os.getenv('API_KEY')
 OLLAMA_MODEL = 'llama3.1:latest'
 OLLAMA_MAX_TOKENS = 50
 OLLAMA_TEMPERATURE = 0.5
+OLLAMA_CTX = 2048
 HISTORY_FILE = 'command_history.txt'

@@ -34,7 +34,7 @@ class OllamaClient:
             response = self.client.chat(
                 model=config.OLLAMA_MODEL,
                 messages=self.history,  # Pass history to the chat method
-                options={'max_tokens': config.OLLAMA_MAX_TOKENS, 'temperature': config.OLLAMA_TEMPERATURE}
+                options={'max_tokens': config.OLLAMA_MAX_TOKENS, 'temperature': config.OLLAMA_TEMPERATURE, 'num_ctx':config.OLLAMA_CTX}
             )
             self.ui_helpers.stop_spinner(spinner, success=True, message="Response generated")
             
@@ -64,7 +64,7 @@ class OllamaClient:
                 model=config.OLLAMA_MODEL,
                 messages=self.history,
                 stream=True,  # Enable streaming
-                options={'max_tokens': config.OLLAMA_MAX_TOKENS, 'temperature': config.OLLAMA_TEMPERATURE}
+                options={'max_tokens': config.OLLAMA_MAX_TOKENS, 'temperature': config.OLLAMA_TEMPERATURE, 'num_ctx':config.OLLAMA_CTX}
             )
             for chunk in response:  # Stream chunks of the response
                 stream_callback(chunk['message']['content'])  # Call the callback with each chunk

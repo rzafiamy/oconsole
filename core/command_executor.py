@@ -10,11 +10,12 @@ class CommandExecutor:
 
     def run_command(self, command, use_pexpect=False, expected_inputs=None):
         """
-        Runs a shell command and returns its beautified output or error.
+        Runs a shell command and returns a structured result.
         Handles interactive commands with `pexpect` when `use_pexpect` is True.
         :param command: The shell command to execute.
         :param use_pexpect: Set to True if the command requires interaction.
         :param expected_inputs: A list of dictionaries with 'prompt' and 'response' to handle expected input.
+        :return: A dictionary with 'success' (bool), 'output' or 'error' (str), and 'elapsed_time' (float).
         """
         print(f"{Fore.CYAN}{Style.BRIGHT}Executing command: {Fore.YELLOW}{command}{Style.RESET_ALL}")
         
@@ -28,6 +29,7 @@ class CommandExecutor:
     def _run_non_interactive_command(self, command, start_time):
         """
         Runs a non-interactive shell command using subprocess.
+        Returns a structured result.
         """
         try:
             # Start the subprocess
@@ -38,23 +40,19 @@ class CommandExecutor:
             elapsed_time = time.time() - start_time
 
             if process.returncode != 0:
-                # Handle the error case with red output
-                print(f"{Fore.RED}{Style.BRIGHT}Error Occurred:{Style.RESET_ALL}")
-                print(f"{Fore.RED}{error}{Style.RESET_ALL}")
-                print(f"{Fore.RED}{Style.BRIGHT}Execution time: {elapsed_time:.2f} seconds{Style.RESET_ALL}")
-                return error
+                # Handle the error case
+                return {'success': False, 'error': error.strip(), 'elapsed_time': elapsed_time}
             else:
-                # Success case: beautify and format output
-                self._print_successful_output(output, elapsed_time)
-                return output
+                # Success case: beautify and return output
+                return {'success': True, 'output': output.strip(), 'elapsed_time': elapsed_time}
         except Exception as e:
-            # Catch any unexpected errors and display in red
-            print(f"{Fore.RED}Failed to execute command: {str(e)}{Style.RESET_ALL}")
-            return str(e)
+            # Catch any unexpected errors
+            return {'success': False, 'error': str(e), 'elapsed_time': time.time() - start_time}
 
     def _run_interactive_command(self, command, expected_inputs, start_time):
         """
         Runs an interactive shell command using pexpect and handles expected inputs.
+        Returns a structured result.
         """
         try:
             # Start the pexpect process
@@ -72,22 +70,16 @@ class CommandExecutor:
             process.wait()
             
             elapsed_time = time.time() - start_time
-            print(f"{Fore.GREEN}{Style.BRIGHT}Interactive command completed successfully!{Style.RESET_ALL}")
-            print(f"{Fore.GREEN}Execution time: {elapsed_time:.2f} seconds{Style.RESET_ALL}")
-
-            return True
+            return {'success': True, 'output': 'Interactive command completed successfully', 'elapsed_time': elapsed_time}
 
         except pexpect.exceptions.EOF:
-            print(f"{Fore.RED}Command ended unexpectedly (EOF).{Style.RESET_ALL}")
-            return False
+            return {'success': False, 'error': 'Command ended unexpectedly (EOF)', 'elapsed_time': time.time() - start_time}
         
         except pexpect.exceptions.TIMEOUT:
-            print(f"{Fore.RED}Command timed out.{Style.RESET_ALL}")
-            return False
+            return {'success': False, 'error': 'Command timed out', 'elapsed_time': time.time() - start_time}
         
         except Exception as e:
-            print(f"{Fore.RED}Failed to execute interactive command: {str(e)}{Style.RESET_ALL}")
-            return False
+            return {'success': False, 'error': str(e), 'elapsed_time': time.time() - start_time}
 
     def _print_successful_output(self, output, elapsed_time):
         """
@@ -107,4 +99,3 @@ class CommandExecutor:
         else:
             # Print plain output
             print(f"{Fore.LIGHTGREEN_EX}{output}{Style.RESET_ALL}")
-

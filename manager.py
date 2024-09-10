@@ -18,6 +18,7 @@ class TaskManager:
     def automate_task(self, task_description):
         """
         Takes a task description, uses LLM to generate a command, and executes it.
+        If the command fails, sends error output back to AI for new suggestions.
         """
         prompt = f"""
         Generate one Linux command to {task_description}.
@@ -32,24 +33,65 @@ class TaskManager:
         if command:
             if self.ui_helpers.confirm_execution(command):
                 self.ui_helpers.display_progress_bar()
+                
+                # Run the command and handle potential errors
                 result = self.command_executor.run_command(command.strip())
 
-                # Store the output of the command for context in later questions
-                self.last_command_output = result
-                self.storage.store_command(command.strip())
-                self.command_history.append(task_description)  # Add to history
-
-                # self.ui_helpers.show_final_output(result)
+                if result['success']:
+                    # If the command was successful, store the output
+                    self.last_command_output = result['output']
+                    self.command_executor._print_successful_output(result['output'], result['elapsed_time'])
+                    self.storage.store_command(command.strip())
+                    self.command_history.append(task_description)
+                else:
+                    # If the command failed, send the error to the AI model
+                    self.handle_command_failure(command.strip(), result['error'])
             else:
                 print(f"{Fore.RED}Command not run.")
         else:
             print(f"{Fore.RED}No command generated.")
+
+
+    def handle_command_failure(self, command, error_message):
+        """
+        Sends error output back to AI for new suggestions and retries the command.
+        """
+        print(f"{Fore.RED}Command failed with error: {error_message}")
+        
+        # Send error message back to AI for suggestions
+        error_prompt = f"""
+        The following command failed: {command}
+        Error message: {error_message}
+        Please suggest an alternative command to achieve the same task.
+         Expected output:
+        - One linux alternative command that performs the task described without introductory words.
+        - Avoid using backticks (``) to wrap commands.
+        """
+        suggestion = self.ollama_client.get_chat_response(error_prompt)
+
+        if suggestion:
+            print(f"{Fore.YELLOW}AI Suggestion: {suggestion}")
+            if self.ui_helpers.confirm_execution(suggestion):
+                self.ui_helpers.display_progress_bar()
+                result = self.command_executor.run_command(suggestion.strip())
+                
+                if result['success']:
+                    self.last_command_output = result['output']
+                    self.storage.store_command(suggestion.strip())
+                    self.command_history.append(f"Retry for: {command}")
+                else:
+                    print(f"{Fore.RED}Retry failed. Error: {result.error}")
+            else:
+                print(f"{Fore.RED}Suggested command not run.")
+        else:
+            print(f"{Fore.RED}No alternative command generated.")
 
     def ask_about_output(self):
         """
         Allows the user to ask questions about the last command output.
         Streams the response for a more interactive experience.
         """
+ 
         while True:
             print()
             question = input(f"{Fore.CYAN}What do you want to ask about the last command output (/back to return) ?: ")
@@ -59,8 +101,17 @@ class TaskManager:
                 break
 
             # Combine the last command output with the user's question
-            context = f"Here is the command output:\n{self.last_command_output}\n\nNow, {question}"
-
+            context = f"""
+            Your are an expert on admin sys linux and devops. 
+            Reply to user question about the last command output.
+            Command output:
+            {self.last_command_output}
+            Now, {question}
+            Expected output:
+            - A response to the user's question based on the last command output.
+            - Strucutred response with no introductory words.
+            - Try to reply in different paragraphs with title and content.
+            """
 
             def stream_callback(chunk):
                 """
@@ -71,6 +122,7 @@ class TaskManager:
             # Get the streamed response using context and the user's question
             print(f"{Fore.MAGENTA}Streaming response:")
             self.ollama_client.get_streaming_response(context, stream_callback)
+
 
     def display_history(self):
         """
