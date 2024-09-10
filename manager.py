@@ -77,6 +77,7 @@ class TaskManager:
                 
                 if result['success']:
                     self.last_command_output = result['output']
+                    self.command_executor._print_successful_output(result['output'], result['elapsed_time'])
                     self.storage.store_command(suggestion.strip())
                     self.command_history.append(f"Retry for: {command}")
                 else:
