@@ -149,6 +149,7 @@ class TaskManager:
             print()
             print(f"{Fore.LIGHTYELLOW_EX} Describe the task you want to automate:")
             print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'exit' to quit")
+            print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'purge to remove messages from the chat history")
             print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'history' to view command history")
             print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'ask' to ask questions about the last command output")
 
@@ -160,6 +161,8 @@ class TaskManager:
             if task.lower() == 'exit':
                 print(f"{Fore.GREEN}Exiting...")
                 break
+            elif task.lower() == 'purge':
+                self.ollama_client.purge_chat_history()
             elif task.lower() == 'history':
                 self.display_history()
             elif task.lower() == 'ask':

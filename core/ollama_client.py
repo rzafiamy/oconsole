@@ -73,3 +73,9 @@ class OllamaClient:
         except Exception as e:
             #self.ui_helpers.stop_spinner(spinner, success=False, message=f"Error generating response: {str(e)}")
             return f"Error generating response: {str(e)}"
+
+    def purge_chat_history(self):
+        """
+        Purges the chat history.
+        """
+        self.history = []
