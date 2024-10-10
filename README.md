@@ -1,6 +1,6 @@
 # 🖥️ Oconsole
 
-**Oconsole** is an interactive Python-based tool powered by Ollama's LLaMA model to automate Linux command-line operations. The tool uses natural language to generate Linux commands and executes them with a smooth and intuitive interface, providing command history storage for persistent session management.
+**Oconsole** is an interactive Python-based tool powered by Openai or Ollama's LLaMA model to automate Linux command-line operations. The tool uses natural language to generate Linux commands and executes them with a smooth and intuitive interface, providing command history storage for persistent session management.
 
 ## 🚀 Features
 
@@ -100,19 +100,20 @@ Set API_KEY to empty if not required by your env
 
 ## ⚙️ Configuration
 
-You can configure Oconsole via the `config.py` file:
+You can configure Oconsole via the `.env` file:
+Copy .env.example into .env
 
 ```python
-# config.py
-
-OLLAMA_MODEL = 'llama3.1:latest'  # Specify the LLaMA model version
-OLLAMA_MAX_TOKENS = 50            # Maximum number of tokens to be used by the model
-OLLAMA_TEMPERATURE = 0.5          # Temperature for LLM response randomness
+# .env
+PROVIDER = 'openai' or 'ollama'
+MODEL = 'llama3.1:latest'  # Specify the LLaMA model version
+MAX_TOKENS = 50            # Maximum number of tokens to be used by the model
+TEMPERATURE = 0.5          # Temperature for LLM response randomness
 HISTORY_FILE = 'command_history.txt' # Path to store command history
 ```
 
 You can adjust:
-- The LLaMA model version
+- The model version
 - Token limits
 - Temperature for response randomness
 - Command history file path

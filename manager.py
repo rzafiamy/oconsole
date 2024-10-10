@@ -1,4 +1,5 @@
 from core.ollama_client import OllamaClient
+from core.openai_client import OpenAIClient
 from colorama import Fore
 from core.command_executor import CommandExecutor
 from core.ui_helpers import UIHelpers
@@ -8,7 +9,10 @@ import readline
 
 class TaskManager:
     def __init__(self):
-        self.ollama_client = OllamaClient()
+        if config.PROVIDER == 'openai':
+            self.client = OpenAIClient()
+        else:
+            self.client = OllamaClient()
         self.command_executor = CommandExecutor()
         self.ui_helpers = UIHelpers()
         self.storage = Storage(config.HISTORY_FILE)
@@ -28,7 +32,7 @@ class TaskManager:
         """
 
         # Get the response using history-enabled chat method
-        command = self.ollama_client.get_chat_response(prompt)
+        command = self.client.get_chat_response(prompt)
 
         if command:
             if self.ui_helpers.confirm_execution(command):
@@ -67,7 +71,7 @@ class TaskManager:
         - One linux alternative command that performs the task described without introductory words.
         - Avoid using backticks (``) to wrap commands.
         """
-        suggestion = self.ollama_client.get_chat_response(error_prompt)
+        suggestion = self.client.get_chat_response(error_prompt)
 
         if suggestion:
             print(f"{Fore.YELLOW}AI Suggestion: {suggestion}")
@@ -122,7 +126,7 @@ class TaskManager:
 
             # Get the streamed response using context and the user's question
             print(f"{Fore.MAGENTA}Streaming response:")
-            self.ollama_client.get_streaming_response(context, stream_callback)
+            self.client.get_streaming_response(context, stream_callback)
 
 
     def display_history(self):
@@ -163,7 +167,7 @@ class TaskManager:
                 print(f"{Fore.GREEN}Exiting...")
                 break
             elif task.lower() == 'purge':
-                self.ollama_client.purge_chat_history()
+                self.client.purge_chat_history()
             elif task.lower() == 'history':
                 self.display_history()
             elif task.lower() == 'ask':
