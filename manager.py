@@ -6,6 +6,7 @@ from core.ui_helpers import UIHelpers
 from core.storage import Storage
 import config
 import readline
+import os
 
 class TaskManager:
     def __init__(self):
@@ -50,40 +51,81 @@ class TaskManager:
                 print(f"{Fore.RED}Plan rejected by user.")
         else:
             print(f"{Fore.RED}No plan generated.")
-    
+
     def execute_task_plan(self):
         """
-        Executes the planned commands one by one with user interaction.
+        Executes the planned commands one by one or generates a bash script if 'all' is chosen.
         """
-        execute_all = False  # Flag to track if the user wants to execute all commands without asking
+        execute_all = False  # Flag to track if the user wants to execute all commands via a bash script
         
         for i, command in enumerate(self.command_plan, 1):
             print(f"\n{Fore.CYAN}Executing command {i}/{len(self.command_plan)}: {command}")
             
             if not execute_all:  # Only prompt the user if they haven't chosen to execute all
-                user_choice = input(f"Do you want to run this command? (y/n/a for all): ").strip().lower()
+                user_choice = input(f"Do you want to run this command? (y/n/a for all/N for no all): ").strip().lower()
                 
                 if user_choice == 'y':
-                    pass  # Continue to execute the command
+                    # Proceed with executing the command normally
+                    self.run_single_command(command)
                 elif user_choice == 'a':
-                    execute_all = True  # Set flag to execute all remaining commands
-                else:
+                    # Generate a bash script with all the commands and execute
+                    self.generate_bash_script()
+                    return  # Exit after generating and executing the script
+                elif user_choice == 'n':
                     print(f"{Fore.YELLOW}Command skipped by user.")
                     continue  # Skip the current command
+                elif user_choice == 'N':
+                    print(f"{Fore.RED}Cancelling all remaining commands.")
+                    break 
 
-            # If user chose 'y' or 'a', execute the command
-            self.ui_helpers.display_progress_bar()
-            result = self.command_executor.run_command(command.strip())
+    def run_single_command(self, command):
+        """
+        Run a single command with progress and error handling.
+        """
+        self.ui_helpers.display_progress_bar()
+        result = self.command_executor.run_command(command.strip())
+
+        if result['success']:
+            self.last_command_output = result['output']
+            self.command_executor._print_successful_output(result['output'], result['elapsed_time'])
+            self.storage.store_command(command.strip())
+            self.command_history.append(command)
+        else:
+            print(f"{Fore.RED}Command failed: {result['error']}")
+            if not self.handle_failed_command(command, result['error']):
+                print(f"{Fore.RED}Skipping this command.")
+
+    def generate_bash_script(self):
+        """
+        Generates a bash script with all the planned commands and executes it after user confirmation.
+        """
+        script_path = "/tmp/task_plan.sh"  # Temporary location for the bash script
+        print(f"{Fore.YELLOW}Generating bash script at {script_path}...")
+
+        with open(script_path, 'w') as script_file:
+            script_file.write("#!/bin/bash\n\n")
+            for command in self.command_plan:
+                script_file.write(f"{command}\n")
+
+        # Make the script executable
+        os.chmod(script_path, 0o755)
+
+        print(f"{Fore.GREEN}Bash script created and made executable.")
+        user_confirm = input(f"{Fore.CYAN}Do you want to execute the script now? (y/n): ").strip().lower()
+
+        if user_confirm == 'y':
+            print(f"{Fore.CYAN}Executing the bash script...")
+            result = self.command_executor.run_command(f"bash {script_path}")
 
             if result['success']:
+                print(f"{Fore.GREEN}Script executed successfully!")
                 self.last_command_output = result['output']
                 self.command_executor._print_successful_output(result['output'], result['elapsed_time'])
-                self.storage.store_command(command.strip())
-                self.command_history.append(command)
             else:
-                print(f"{Fore.RED}Command failed: {result['error']}")
-                if not self.handle_failed_command(command, result['error']):
-                    print(f"{Fore.RED}Skipping this command.")
+                print(f"{Fore.RED}Script execution failed: {result['error']}")
+        else:
+            print(f"{Fore.YELLOW}Script execution cancelled by user.")
+
 
     
     def handle_failed_command(self, command, error_message):
