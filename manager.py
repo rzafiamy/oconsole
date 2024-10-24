@@ -16,81 +16,130 @@ class TaskManager:
         self.command_executor = CommandExecutor()
         self.ui_helpers = UIHelpers()
         self.storage = Storage(config.HISTORY_FILE)
-        self.last_command_output = None  # Store the last command output here
-        self.command_history = []  # Store the history of commands typed
-
-    def automate_task(self, task_description):
+        self.last_command_output = None
+        self.command_history = []
+        self.command_plan = []  # Store the commands plan
+    
+    def plan_task(self, task_description):
         """
-        Takes a task description, uses LLM to generate a command, and executes it.
-        If the command fails, sends error output back to AI for new suggestions.
+        Generates a plan of commands for the given task description. User confirms before execution.
         """
+        print(f"{Fore.BLUE}Planning task: {task_description}")
+        
         prompt = f"""
-        Generate one Linux command to {task_description}.
+        Plan the steps to {task_description} using Linux commands.
         Expected output:
-        - One linux command that performs the task described without introductory words.
+        - A list of Linux commands (without explanations or introductory text).
+        - Each command should be separated by a newline.
         - Avoid using backticks (``) to wrap commands.
+        - Provide only mandatory steps to complete the task.
         """
 
-        # Get the response using history-enabled chat method
-        command = self.client.get_chat_response(prompt)
+        # Get response from LLM, which will be a list of commands
+        command_plan = self.client.get_chat_response(prompt).splitlines()
 
-        if command:
-            if self.ui_helpers.confirm_execution(command):
-                self.ui_helpers.display_progress_bar()
-                
-                # Run the command and handle potential errors
-                result = self.command_executor.run_command(command.strip())
-
-                if result['success']:
-                    # If the command was successful, store the output
-                    self.last_command_output = result['output']
-                    self.command_executor._print_successful_output(result['output'], result['elapsed_time'])
-                    self.storage.store_command(command.strip())
-                    self.command_history.append(task_description)
-                else:
-                    # If the command failed, send the error to the AI model
-                    self.handle_command_failure(command.strip(), result['error'])
+        if command_plan:
+            print(f"{Fore.YELLOW}Generated Plan:")
+            for i, command in enumerate(command_plan, 1):
+                print(f"{i}. {command}")
+            
+            if self.ui_helpers.confirm_execution("Do you want to proceed with this plan?"):
+                self.command_plan = command_plan  # Store the plan for execution
+                self.execute_task_plan()
             else:
-                print(f"{Fore.RED}Command not run.")
+                print(f"{Fore.RED}Plan rejected by user.")
         else:
-            print(f"{Fore.RED}No command generated.")
-
-
-    def handle_command_failure(self, command, error_message):
+            print(f"{Fore.RED}No plan generated.")
+    
+    def execute_task_plan(self):
         """
-        Sends error output back to AI for new suggestions and retries the command.
+        Executes the planned commands one by one with user interaction.
+        """
+        execute_all = False  # Flag to track if the user wants to execute all commands without asking
+        
+        for i, command in enumerate(self.command_plan, 1):
+            print(f"\n{Fore.CYAN}Executing command {i}/{len(self.command_plan)}: {command}")
+            
+            if not execute_all:  # Only prompt the user if they haven't chosen to execute all
+                user_choice = input(f"Do you want to run this command? (y/n/a for all): ").strip().lower()
+                
+                if user_choice == 'y':
+                    pass  # Continue to execute the command
+                elif user_choice == 'a':
+                    execute_all = True  # Set flag to execute all remaining commands
+                else:
+                    print(f"{Fore.YELLOW}Command skipped by user.")
+                    continue  # Skip the current command
+
+            # If user chose 'y' or 'a', execute the command
+            self.ui_helpers.display_progress_bar()
+            result = self.command_executor.run_command(command.strip())
+
+            if result['success']:
+                self.last_command_output = result['output']
+                self.command_executor._print_successful_output(result['output'], result['elapsed_time'])
+                self.storage.store_command(command.strip())
+                self.command_history.append(command)
+            else:
+                print(f"{Fore.RED}Command failed: {result['error']}")
+                if not self.handle_failed_command(command, result['error']):
+                    print(f"{Fore.RED}Skipping this command.")
+
+    
+    def handle_failed_command(self, command, error_message):
+        """
+        Handles a failed command by prompting the user to retry, skip, or modify.
+        Returns True if retry is chosen, False otherwise.
         """
         print(f"{Fore.RED}Command failed with error: {error_message}")
+        action = input(f"{Fore.YELLOW}Do you want to retry (r), modify (m), or skip (s) this command? ").strip().lower()
         
-        # Send error message back to AI for suggestions
-        error_prompt = f"""
-        The following command failed: {command}
-        Error message: {error_message}
-        Please suggest an alternative command to achieve the same task.
-         Expected output:
-        - One linux alternative command that performs the task described without introductory words.
-        - Avoid using backticks (``) to wrap commands.
-        """
-        suggestion = self.client.get_chat_response(error_prompt)
-
-        if suggestion:
-            print(f"{Fore.YELLOW}AI Suggestion: {suggestion}")
-            if self.ui_helpers.confirm_execution(suggestion):
-                self.ui_helpers.display_progress_bar()
-                result = self.command_executor.run_command(suggestion.strip())
-                
-                if result['success']:
-                    self.last_command_output = result['output']
-                    self.command_executor._print_successful_output(result['output'], result['elapsed_time'])
-                    self.storage.store_command(suggestion.strip())
-                    self.command_history.append(f"Retry for: {command}")
-                else:
-                    print(f"{Fore.RED}Retry failed. Error: {result['error']}")
-            else:
-                print(f"{Fore.RED}Suggested command not run.")
+        if action == 'r':
+            return self.retry_command(command)
+        elif action == 'm':
+            return self.modify_and_retry_command(command)
         else:
-            print(f"{Fore.RED}No alternative command generated.")
-
+            return False
+    
+    def retry_command(self, command):
+        """
+        Retries the same command.
+        """
+        print(f"{Fore.CYAN}Retrying command: {command}")
+        result = self.command_executor.run_command(command.strip())
+        
+        if result['success']:
+            self.last_command_output = result['output']
+            self.command_executor._print_successful_output(result['output'], result['elapsed_time'])
+            self.storage.store_command(command.strip())
+            self.command_history.append(f"Retry for: {command}")
+            return True
+        else:
+            print(f"{Fore.RED}Retry failed: {result['error']}")
+            return False
+    
+    def modify_and_retry_command(self, command):
+        """
+        Modifies the command before retrying it.
+        """
+        suggestion = input(f"{Fore.CYAN}Enter a modified command: ").strip()
+        if suggestion:
+            print(f"{Fore.CYAN}Running modified command: {suggestion}")
+            result = self.command_executor.run_command(suggestion.strip())
+            
+            if result['success']:
+                self.last_command_output = result['output']
+                self.command_executor._print_successful_output(result['output'], result['elapsed_time'])
+                self.storage.store_command(suggestion.strip())
+                self.command_history.append(f"Modified command for: {command}")
+                return True
+            else:
+                print(f"{Fore.RED}Modified command failed: {result['error']}")
+                return False
+        else:
+            print(f"{Fore.RED}No modified command entered.")
+            return False
+    
     def ask_about_output(self):
         """
         Allows the user to ask questions about the last command output.
@@ -135,23 +184,19 @@ class TaskManager:
         """
         print(f"{Fore.GREEN}Command History:")
         for i, command in enumerate(self.command_history, 1):
-            print(f"{i}. {command}")
-
+            print(f"{i}. {command}")    
     def start(self):
         """
-        Starts an interactive command-line loop for automating tasks.
+        Starts an interactive command-line loop for task planning and execution.
         """
         print(f"{Fore.MAGENTA}-"*100)
-        print(f"{Fore.MAGENTA}Welcome to the Python LLM-powered command interpreter!")
+        print(f"{Fore.MAGENTA}Welcome to the Python LLM-powered Task Planner and Executor!")
         print(f"{Fore.MAGENTA}-"*100)
         
-        # Load command history into readline
         for cmd in self.storage.load_history():
             readline.add_history(cmd)
 
         while True:
-            #add new line
-            print()
             print(f"{Fore.LIGHTYELLOW_EX} Describe the task you want to automate:")
             print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'exit' to quit")
             print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'purge to remove messages from the chat history")
@@ -159,10 +204,8 @@ class TaskManager:
             print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'ask' to ask questions about the last command output")
 
             task = input(f"{Fore.LIGHTYELLOW_EX}>>: ")
-            
-            # Add input to readline history
+             # Add input to readline history
             readline.add_history(task)
-            
             if task.lower() == 'exit':
                 print(f"{Fore.GREEN}Exiting...")
                 break
@@ -173,7 +216,7 @@ class TaskManager:
             elif task.lower() == 'ask':
                 self.ask_about_output()
             else:
-                self.automate_task(task)
+                self.plan_task(task)
 
 if __name__ == "__main__":
     manager = TaskManager()

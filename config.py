@@ -7,7 +7,7 @@ load_dotenv()
 
 
 HISTORY_FILE = 'command_history.txt'
-PROVIDER = 'openai'  # Set the provider to OpenAI or Ollama
+PROVIDER = 'ollama'  # Set the provider to OpenAI or Ollama
 
 #---------------------------------
 # Access the environment variables
