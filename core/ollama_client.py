@@ -6,6 +6,9 @@ from core.ai_client import AIClient
 import config
 
 class OllamaClient(AIClient):
+    """
+    Class to interact with Ollama API
+    """
     def __init__(self):
         super().__init__(UIHelpers())
         headers = {}
@@ -14,6 +17,9 @@ class OllamaClient(AIClient):
         self.client = Client(host=config.HOST, headers=headers)
 
     def get_chat_response(self, prompt):
+        """
+        Get a response from the Ollama Chat API
+        """
         spinner = self.ui_helpers.start_spinner('Generating response with LLM')
         self.add_to_history("user", prompt)
 
@@ -31,6 +37,9 @@ class OllamaClient(AIClient):
             return f"Error generating response: {str(e)}"
 
     def get_streaming_response(self, prompt, stream_callback):
+        """
+        Get a response from the Ollama Chat API using streaming
+        """
         self.ui_helpers.stop_spinner(None, success=True, message="Processing your question...")
         self.add_to_history("user", prompt)
 

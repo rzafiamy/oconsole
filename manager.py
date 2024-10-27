@@ -21,20 +21,34 @@ class TaskManager:
         self.command_history = []
         self.command_plan = []  # Store the commands plan
     
+    def router_task(self, task_description):
+        """
+        Classify in categories the following user requests.
+        """
+        print(f"{Fore.BLUE}Classifying user requests: {task_description}")
+        
+        prompt = ("\n".join(config.ROUTER_PROMPTS)).format(task_description=task_description)
+        
+        # Get response from LLM, which will be a list of commands
+        category = self.client.get_chat_response(prompt).splitlines()
+        
+        if category:
+            # convert 
+            print(f"{Fore.YELLOW}Category:{category}")
+            if "COMMAND" in category:
+                self.plan_task(task_description)
+            elif "CONVERSATION" in category:
+                self.conversation_task(task_description)
+        else:
+            print(f"{Fore.RED}No category generated.")
+    
     def plan_task(self, task_description):
         """
         Generates a plan of commands for the given task description. User confirms before execution.
         """
         print(f"{Fore.BLUE}Planning task: {task_description}")
         
-        prompt = f"""
-        Plan the steps to {task_description} using Linux commands.
-        Expected output:
-        - A list of Linux commands (without explanations or introductory text).
-        - Each command should be separated by a newline.
-        - Avoid using backticks (``) to wrap commands.
-        - Provide only mandatory steps to complete the task.
-        """
+        prompt = ("\n".join(config.COMMAND_PROMPTS)).format(task_description=task_description)
 
         # Get response from LLM, which will be a list of commands
         command_plan = self.client.get_chat_response(prompt).splitlines()
@@ -42,7 +56,7 @@ class TaskManager:
         if command_plan:
             print(f"{Fore.YELLOW}Generated Plan:")
             for i, command in enumerate(command_plan, 1):
-                print(f"{i}. {command}")
+                print(f"{i}- {command}")
             
             if self.ui_helpers.confirm_execution("Do you want to proceed with this plan?"):
                 self.command_plan = command_plan  # Store the plan for execution
@@ -182,6 +196,25 @@ class TaskManager:
             print(f"{Fore.RED}No modified command entered.")
             return False
     
+    def conversation_task(self, task_description):
+        """
+        Initiates a conversation with the user.
+        """
+        print(f"{Fore.GREEN}Starting a conversation...")
+        conversation_prompt =  ("\n".join(config.COMMAND_PROMPTS)).format(task_description=task_description)
+        if self.last_command_output:
+            conversation_prompt = f"{self.last_command_output}\n{conversation_prompt}"
+            
+        def stream_callback(chunk):
+            """
+            Callback function to handle streaming response chunks.
+            """
+            print(f"{Fore.CYAN}{chunk}", end='', flush=True)  # Stream the chunks as they arrive
+
+        # Get the streamed response using context and the user's question
+        print(f"{Fore.MAGENTA}Streaming response:")
+        self.client.get_streaming_response(conversation_prompt, stream_callback)
+    
     def ask_about_output(self):
         """
         Allows the user to ask questions about the last command output.
@@ -243,7 +276,6 @@ class TaskManager:
             print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'exit' to quit")
             print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'purge to remove messages from the chat history")
             print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'history' to view command history")
-            print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'ask' to ask questions about the last command output")
 
             task = input(f"{Fore.LIGHTYELLOW_EX}>>: ")
              # Add input to readline history
@@ -255,10 +287,9 @@ class TaskManager:
                 self.client.purge_chat_history()
             elif task.lower() == 'history':
                 self.display_history()
-            elif task.lower() == 'ask':
-                self.ask_about_output()
             else:
-                self.plan_task(task)
+                #self.plan_task(task)
+                self.router_task(task)
 
 if __name__ == "__main__":
     manager = TaskManager()
