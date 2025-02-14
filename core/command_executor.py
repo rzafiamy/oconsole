@@ -17,7 +17,7 @@ class CommandExecutor:
         :param expected_inputs: A list of dictionaries with 'prompt' and 'response' to handle expected input.
         :return: A dictionary with 'success' (bool), 'output' or 'error' (str), and 'elapsed_time' (float).
         """
-        print(f"{Fore.CYAN}{Style.BRIGHT}Executing command: {Fore.YELLOW}{command}{Style.RESET_ALL}")
+        #print(f"{Fore.CYAN}{Style.BRIGHT}Executing command: {Fore.YELLOW}{command}{Style.RESET_ALL}")
         
         start_time = time.time()  # Track execution time
         

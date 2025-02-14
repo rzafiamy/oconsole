@@ -35,7 +35,7 @@ class OpenAIClient(AIClient):
                 max_tokens=config.MAX_TOKENS,
                 temperature=config.TEMPERATURE
             )
-            self.ui_helpers.stop_spinner(spinner, success=True, message="Response generated")
+            self.ui_helpers.stop_spinner(spinner, success=True, message="OK")
             self.add_to_history("assistant", response.choices[0].message.content)
             return response.choices[0].message.content
         except Exception as e:
@@ -46,7 +46,7 @@ class OpenAIClient(AIClient):
         """
         Get a response from the OpenAI Chat API using streaming
         """
-        self.ui_helpers.stop_spinner(None, success=True, message="Processing your question...")
+        self.ui_helpers.stop_spinner(None, success=True, message="...")
         self.add_to_history("user", prompt)
 
         try:

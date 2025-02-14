@@ -29,7 +29,7 @@ class OllamaClient(AIClient):
                 messages=self.history,
                 options={'max_tokens': config.MAX_TOKENS, 'temperature': config.TEMPERATURE, 'num_ctx': config.CTX}
             )
-            self.ui_helpers.stop_spinner(spinner, success=True, message="Response generated")
+            self.ui_helpers.stop_spinner(spinner, success=True, message="OK")
             self.add_to_history("assistant", response['message']['content'])
             return response['message']['content']
         except Exception as e:
@@ -40,7 +40,7 @@ class OllamaClient(AIClient):
         """
         Get a response from the Ollama Chat API using streaming
         """
-        self.ui_helpers.stop_spinner(None, success=True, message="Processing your question...")
+        self.ui_helpers.stop_spinner(None, success=True, message="...")
         self.add_to_history("user", prompt)
 
         try:

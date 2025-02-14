@@ -14,6 +14,7 @@ class TaskManager:
             self.client = OpenAIClient()
         else:
             self.client = OllamaClient()
+        self.first = True
         self.command_executor = CommandExecutor()
         self.ui_helpers = UIHelpers()
         self.storage = Storage(config.HISTORY_FILE)
@@ -21,6 +22,9 @@ class TaskManager:
         self.command_history = []
         self.command_plan = []  # Store the commands plan
     
+    # ---------------------------------------------------------
+    # Plan the task based on user input
+    # ---------------------------------------------------------
     def router_task(self, task_description):
         """
         Classify in categories the following user requests.
@@ -42,6 +46,9 @@ class TaskManager:
         else:
             print(f"{Fore.RED}No category generated.")
     
+    # ---------------------------------------------------------
+    # Execute the task based on user input
+    # ---------------------------------------------------------
     def plan_task(self, task_description):
         """
         Generates a plan of commands for the given task description. User confirms before execution.
@@ -55,17 +62,18 @@ class TaskManager:
 
         if command_plan:
             print(f"{Fore.YELLOW}Generated Plan:")
+
             for i, command in enumerate(command_plan, 1):
                 print(f"{i}- {command}")
-            
-            if self.ui_helpers.confirm_execution("Do you want to proceed with this plan?"):
-                self.command_plan = command_plan  # Store the plan for execution
-                self.execute_task_plan()
-            else:
-                print(f"{Fore.RED}Plan rejected by user.")
+
+            self.command_plan = command_plan  # Store the plan for execution
+            self.execute_task_plan()
         else:
             print(f"{Fore.RED}No plan generated.")
 
+    # ---------------------------------------------------------
+    # Execute Task Plan
+    # ---------------------------------------------------------
     def execute_task_plan(self):
         """
         Executes the planned commands one by one or generates a bash script if 'all' is chosen.
@@ -73,7 +81,7 @@ class TaskManager:
         execute_all = False  # Flag to track if the user wants to execute all commands via a bash script
         
         for i, command in enumerate(self.command_plan, 1):
-            print(f"\n{Fore.CYAN}Executing command {i}/{len(self.command_plan)}: {command}")
+            # print(f"\n{Fore.CYAN}Executing command {i}/{len(self.command_plan)}: {command}")
             
             if not execute_all:  # Only prompt the user if they haven't chosen to execute all
                 user_choice = input(f"Do you want to run this command? (y/n/a for all/N for no all): ").strip().lower()
@@ -92,6 +100,9 @@ class TaskManager:
                     print(f"{Fore.RED}Cancelling all remaining commands.")
                     break 
 
+    # ----------------------------------------------------------------------
+    # Run a single command with progress and error handling.
+    # ----------------------------------------------------------------------
     def run_single_command(self, command):
         """
         Run a single command with progress and error handling.
@@ -109,12 +120,15 @@ class TaskManager:
             if not self.handle_failed_command(command, result['error']):
                 print(f"{Fore.RED}Skipping this command.")
 
+    # ----------------------------------------------------------------------
+    # Generate a bash script with all the planned commands and executes it after user confirmation.
+    # ----------------------------------------------------------------------
     def generate_bash_script(self):
         """
         Generates a bash script with all the planned commands and executes it after user confirmation.
         """
         script_path = "/tmp/task_plan.sh"  # Temporary location for the bash script
-        print(f"{Fore.YELLOW}Generating bash script at {script_path}...")
+        # print(f"{Fore.YELLOW}Generating bash script at {script_path}...")
 
         with open(script_path, 'w') as script_file:
             script_file.write("#!/bin/bash\n\n")
@@ -124,24 +138,21 @@ class TaskManager:
         # Make the script executable
         os.chmod(script_path, 0o755)
 
-        print(f"{Fore.GREEN}Bash script created and made executable.")
-        user_confirm = input(f"{Fore.CYAN}Do you want to execute the script now? (y/n): ").strip().lower()
+        # print(f"{Fore.GREEN}Bash script created and made executable.")
+        # print(f"{Fore.CYAN}Executing the bash script...")
+        
+        result = self.command_executor.run_command(f"bash {script_path}")
 
-        if user_confirm == 'y':
-            print(f"{Fore.CYAN}Executing the bash script...")
-            result = self.command_executor.run_command(f"bash {script_path}")
-
-            if result['success']:
-                print(f"{Fore.GREEN}Script executed successfully!")
-                self.last_command_output = result['output']
-                self.command_executor._print_successful_output(result['output'], result['elapsed_time'])
-            else:
-                print(f"{Fore.RED}Script execution failed: {result['error']}")
+        if result['success']:
+            # print(f"{Fore.GREEN}Script executed successfully!")
+            self.last_command_output = result['output']
+            self.command_executor._print_successful_output(result['output'], result['elapsed_time'])
         else:
-            print(f"{Fore.YELLOW}Script execution cancelled by user.")
+            print(f"{Fore.RED}Script execution failed: {result['error']}")
 
-
-    
+    # ----------------------------------------------------------------------
+    # Command Execution
+    # -----------------------------------------------------------------------
     def handle_failed_command(self, command, error_message):
         """
         Handles a failed command by prompting the user to retry, skip, or modify.
@@ -200,7 +211,7 @@ class TaskManager:
         """
         Initiates a conversation with the user.
         """
-        print(f"{Fore.GREEN}Starting a conversation...")
+        # print(f"{Fore.GREEN}Starting a conversation...")
         conversation_prompt =  ("\n".join(config.COMMAND_PROMPTS)).format(task_description=task_description)
         if self.last_command_output:
             conversation_prompt = f"{self.last_command_output}\n{conversation_prompt}"
@@ -212,7 +223,7 @@ class TaskManager:
             print(f"{Fore.CYAN}{chunk}", end='', flush=True)  # Stream the chunks as they arrive
 
         # Get the streamed response using context and the user's question
-        print(f"{Fore.MAGENTA}Streaming response:")
+        # print(f"{Fore.MAGENTA}Streaming response:")
         self.client.get_streaming_response(conversation_prompt, stream_callback)
     
     def ask_about_output(self):
@@ -249,7 +260,7 @@ class TaskManager:
                 print(f"{Fore.CYAN}{chunk}", end='', flush=True)  # Stream the chunks as they arrive
 
             # Get the streamed response using context and the user's question
-            print(f"{Fore.MAGENTA}Streaming response:")
+            # print(f"{Fore.MAGENTA}Streaming response:")
             self.client.get_streaming_response(context, stream_callback)
 
 
@@ -272,12 +283,14 @@ class TaskManager:
             readline.add_history(cmd)
 
         while True:
-            print(f"{Fore.LIGHTYELLOW_EX} Describe the task you want to automate:")
-            print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'exit' to quit")
-            print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'purge to remove messages from the chat history")
-            print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'history' to view command history")
+            if self.first:
+                self.first = False
+                print(f"\n\n{Fore.LIGHTYELLOW_EX} Describe the task you want to automate:")
+                print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'exit' to quit")
+                print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'purge to remove messages from the chat history")
+                print(f"{Fore.LIGHTYELLOW_EX}\t - Type 'history' to view command history")
 
-            task = input(f"{Fore.LIGHTYELLOW_EX}>>: ")
+            task = input(f"\n\n{Fore.LIGHTYELLOW_EX}>>: ")
              # Add input to readline history
             readline.add_history(task)
             if task.lower() == 'exit':
@@ -288,7 +301,7 @@ class TaskManager:
             elif task.lower() == 'history':
                 self.display_history()
             else:
-                #self.plan_task(task)
+                result = self.run_single_command('clear')
                 self.router_task(task)
 
 if __name__ == "__main__":

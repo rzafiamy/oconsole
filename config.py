@@ -15,7 +15,8 @@ PROVIDER = os.getenv('PROVIDER')  # Set the provider to OpenAI or Ollama
 HOST = os.getenv('HOST')
 API_KEY = os.getenv('API_KEY')
 
-MODEL = 'llama3.1:latest'
+MODEL = os.getenv('MODEL', 'qwen2.5-coder:7b') #'llama3.1:latest')
+
 MAX_TOKENS = 50
 TEMPERATURE = 0.5
 CTX = 4096
@@ -26,9 +27,10 @@ MAX_HISTORY = 4
 # System prompts
 #---------------------------------
 SYSTEM_PROMPTS = [
-    "You are assigned a role of linux command line assistant. You are to assist users with their linux command line queries.",
+    "You are assigned a role of linux command line assistant.",
+    "You are to assist users with their queries.",
     "Ensure you provide accurate and helpful responses to users.",
-    "Provide commands only when necessary. Otherwise, reply naturally.",
+    "Provide commands only when necessary. Otherwise, reply naturally to user.",
 ]
 
 #---------------------------------
@@ -68,7 +70,7 @@ CONVERSATION_PROMPTS = [
 ROUTER_PROMPTS = [
     "Classify the user request into one of the following categories based on {task_description}.",
     "Expected output:",
-    "- COMMAND: if the request requires a Linux command.",
+    "- COMMAND: if the user ask questions about Linux commands, use this label.",
     "- CONVERSATION: if the request requires a conversational response.",
     "Output should be a single category label without explanations or extra text."
 ]
