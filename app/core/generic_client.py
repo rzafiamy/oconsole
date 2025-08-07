@@ -2,6 +2,7 @@ import requests
 import json
 import config
 import tiktoken
+import time
 
 class GenericClient:
     def __init__(self):
@@ -28,9 +29,6 @@ class GenericClient:
         return num_tokens
 
     def _prune_history(self):
-        """
-        Prunes the history to stay within the token limit, preserving the system prompt.
-        """
         if not self.tokenizer or not config.AGENT_MEMORY_MAX_TOKENS:
             return
 
@@ -59,10 +57,7 @@ class GenericClient:
     def purge_chat_history(self):
         self.history = []
 
-    def get_tool_response(self, tools):
-        """
-        Gets a standard, non-streaming response. This function ONLY uses 'return'.
-        """
+    def get_tool_response(self, tools, json_schema=None):
         endpoint = f"{self.base_url}/chat/completions"
         payload = {
             "model": self.model,
@@ -71,27 +66,33 @@ class GenericClient:
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
+        
+        if json_schema:
+            payload["response_format"] = { "type": "json_object" }
 
-        try:
-            response = requests.post(endpoint, headers=self.headers, json=payload, timeout=60)
-            response.raise_for_status()
-
+        last_error = None
+        for attempt in range(3):
             try:
-                response_json = response.json()
-            except json.JSONDecodeError:
-                return {"role": "assistant", "content": "API Error: Received an invalid response from the server."}
-            
-            if not response_json or 'choices' not in response_json or not response_json['choices']:
-                return {"role": "assistant", "content": "API Error: Received an empty or malformed response from the server."}
+                response = requests.post(endpoint, headers=self.headers, json=payload, timeout=60)
+                response.raise_for_status()
 
-            return response_json['choices'][0]['message']
-        except requests.exceptions.RequestException as e:
-            return {"role": "assistant", "content": f"API Connection Error: {e}"}
+                try:
+                    response_json = response.json()
+                except json.JSONDecodeError:
+                    return {"role": "assistant", "content": "API Error: Received an invalid response from the server."}
+                
+                if not response_json or 'choices' not in response_json or not response_json['choices']:
+                    return {"role": "assistant", "content": "API Error: Received an empty or malformed response from the server."}
+
+                return response_json['choices'][0]['message']
+            except requests.exceptions.RequestException as e:
+                last_error = e
+                time.sleep(2) # Wait 2 seconds before retrying
+        
+        return {"role": "assistant", "content": f"API Connection Error: {last_error}"}
+
 
     def get_streaming_response(self):
-        """
-        Gets a streaming response. This function ONLY uses 'yield'.
-        """
         endpoint = f"{self.base_url}/chat/completions"
         payload = {
             "model": self.model,
@@ -99,27 +100,33 @@ class GenericClient:
             "stream": True
         }
         full_response = ""
-        try:
-            response = requests.post(endpoint, headers=self.headers, json=payload, stream=True, timeout=60)
-            response.raise_for_status()
-            for line in response.iter_lines():
-                if line:
-                    decoded_line = line.decode('utf-8')
-                    if decoded_line.startswith('data: '):
-                        json_str = decoded_line[len('data: '):]
-                        if json_str.strip() == '[DONE]':
-                            break
-                        try:
-                            chunk = json.loads(json_str)
-                            content = chunk['choices'][0]['delta'].get('content', '')
-                            if content:
-                                full_response += content
-                                yield content
-                        except (json.JSONDecodeError, KeyError):
-                            continue
-        except requests.exceptions.RequestException as e:
-            error_message = f"API Connection Error: {e}"
-            full_response = error_message
-            yield error_message
+        last_error = None
         
-        self.add_assistant_message({'role': 'assistant', 'content': full_response})
+        for attempt in range(3):
+            try:
+                response = requests.post(endpoint, headers=self.headers, json=payload, stream=True, timeout=60)
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if line:
+                        decoded_line = line.decode('utf-8')
+                        if decoded_line.startswith('data: '):
+                            json_str = decoded_line[len('data: '):]
+                            if json_str.strip() == '[DONE]':
+                                break
+                            try:
+                                chunk = json.loads(json_str)
+                                content = chunk['choices'][0]['delta'].get('content', '')
+                                if content:
+                                    full_response += content
+                                    yield content
+                            except (json.JSONDecodeError, KeyError):
+                                continue
+                self.add_assistant_message({'role': 'assistant', 'content': full_response})
+                return # Exit the generator successfully
+            except requests.exceptions.RequestException as e:
+                last_error = e
+                time.sleep(2)
+
+        error_message = f"API Connection Error: {last_error}"
+        yield error_message
+        self.add_assistant_message({'role': 'assistant', 'content': error_message})

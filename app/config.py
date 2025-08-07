@@ -1,3 +1,4 @@
+# app/config.py
 import os
 from dotenv import load_dotenv
 
@@ -9,40 +10,39 @@ API_KEY = os.getenv('API_KEY')
 MODEL = os.getenv('MODEL', 'llama3.1')
 
 # --- Agent Settings ---
-AGENT_MAX_STEPS = 7 
+AGENT_MAX_STEPS = 7
 AGENT_MEMORY_MAX_TOKENS = 16000
 SAFE_COMMANDS = [
-    "ls", "cat", "echo", "pwd", "df", "du", "wc", "grep", 
+    "ls", "cat", "echo", "pwd", "df", "du", "wc", "grep",
     "find", "whoami", "uname", "date", "uptime", "journalctl",
-    "ps", "netstat", "apt", "dpkg", "mkdir", "touch"
+    "ps", "netstat", "apt", "dpkg", "mkdir", "touch", "free"
 ]
 
 # --- App Settings ---
 HISTORY_FILE = '.python_history'
 
-PLANNER_SYSTEM_PROMPT = """
-You are a meticulous planner AI. Your job is to analyze a user's goal and break it down into a concise, numbered list of steps.
-You must also determine if the plan is "complex". A plan is considered complex if it requires more than 2 steps.
-Respond ONLY with a JSON object in the following format:
-{"is_complex": boolean, "plan": ["Step 1...", "Step 2..."]}
+# --- NEW, SIMPLIFIED AND MORE FORCEFUL PROMPT ---
+AGENT_SYSTEM_PROMPT = f"""
+You are a task-oriented AI assistant. Your only purpose is to accomplish the user's request by executing a series of commands. You MUST follow these steps in order, without exception:
+
+1.  **PLAN:** Your first action is ALWAYS to call the `explain_plan` tool to state your step-by-step plan. Do not use any other tool first.
+
+2.  **EXECUTE:** After planning, use the `run_safe_command` or `create_file` tools to execute the steps from your plan.
+
+3.  **ANSWER:** Once the task is fully complete, and only then, you MUST call the `answer_question` tool with the final summary for the user.
+
+Do not deviate from this workflow. Do not engage in conversation.
+
+**Critical Instruction for a known issue:** For the user request "what time is it?", your first step is to generate a plan to use the `date` command.
 """
 
-# --- THIS IS THE FIX ---
-# The new prompt provides much clearer instructions and examples for using arguments.
-AGENT_SYSTEM_PROMPT = f"""
-You are oconsole, an autonomous AI agent. Your purpose is to execute a pre-approved plan to achieve a user's goal by using the tools available to you.
-
-Your primary tool is `run_safe_command`. You MUST be intelligent when using it. Analyze the user's request and context to determine the correct arguments.
-
-**CRITICAL INSTRUCTIONS:**
-1.  **Always use arguments when needed.** Do not just call commands like `ls` or `grep` by themselves. Construct a full `args_string` based on the user's goal.
-2.  **Refer to your memory** to use file paths or other information from previous steps as arguments in subsequent steps.
-
-**Examples of Correct Tool Use:**
-- **User Goal:** "show me details of my documents folder" -> **AI Action:** `run_safe_command(command_name="ls", args_string="-la ~/Documents")`
-- **User Goal:** "how many lines are in my .bashrc file?" -> **AI Action:** `run_safe_command(command_name="wc", args_string="-l ~/.bashrc")`
-- **User Goal:** "search for the word 'error' in my system log" -> **AI Action:** `run_safe_command(command_name="grep", args_string="'error' /var/log/syslog")`
-- **User Goal:** "find all python files in my projects folder" -> **AI Action:** `run_safe_command(command_name="find", args_string="~/projects -name '*.py'")`
-
-For any task that cannot be accomplished with the safe commands ({", ".join(SAFE_COMMANDS)}), use `generate_linux_command`. When the plan is complete, use `answer_question` to give a final summary.
+EXPLAINER_SYSTEM_PROMPT = """You are an expert system assistant. Your role is to interpret the output of a Linux command and provide a brief, one or two-sentence, natural-language explanation for the user. Focus on the most important information in the output. Be concise.
+Example Input:
+Command: df -h
+Output:
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1        50G   20G   30G  40% /
+tmpfs            16G     0   16G   0% /dev/shm
+Example Output:
+The root filesystem is using 40% of its 50GB capacity, with 30GB of space available.
 """

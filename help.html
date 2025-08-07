@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Workflow Presentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+        .flow-arrow {
+            position: relative;
+            width: 100%;
+            height: 4rem; /* 64px */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .flow-arrow::after {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            background-color: #d1d5db; /* Tailwind gray-300 */
+        }
+        .flow-arrow svg {
+            color: #9ca3af; /* Tailwind gray-400 */
+            position: absolute;
+            bottom: -8px;
+            background-color: #f3f4f6;
+            padding: 4px 0;
+        }
+        .terminal-panel {
+            background-color: #1f2937; /* Tailwind gray-800 */
+            color: #d1d5db; /* Tailwind gray-300 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            border: 1px solid #374151; /* Tailwind gray-700 */
+        }
+        .terminal-title {
+            font-weight: 600;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #374151; /* Tailwind gray-700 */
+            margin-bottom: 0.75rem;
+        }
+        .panel-blue { border-left: 4px solid #3b82f6; }
+        .panel-green { border-left: 4px solid #22c55e; }
+        .panel-magenta { border-left: 4px solid #d946ef; }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900">AI Agent Workflow</h1>
+            <p class="mt-4 text-lg text-gray-600">From Question to Answer: A Step-by-Step Visual Breakdown</p>
+        </header>
+
+        <!-- Workflow Start -->
+        <div class="space-y-8">
+
+            <!-- STAGE 1: User Input -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0 h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+                        <svg class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800">Stage 1: User Input & Initial Handling</h2>
+                        <p class="mt-2 text-gray-600">The process begins when you enter a prompt and press Enter. The application captures this input and determines if it's a task for the AI.</p>
+                        <div class="mt-4">
+                            <div class="terminal-panel">
+                                <div class="flex items-center">
+                                    <span class="text-cyan-400 mr-2">›</span>
+                                    <span>what time is it ?</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
+                            <h3 class="font-semibold text-gray-700">Internal Process:</h3>
+                            <ul class="mt-2 list-disc list-inside text-gray-600 space-y-1 text-sm">
+                                <li>The main loop in <code class="text-xs bg-gray-200 p-1 rounded">manager.py</code> receives the input string.</li>
+                                <li>It calls <code class="text-xs bg-gray-200 p-1 rounded">handle_meta_commands</code> to check for special commands (e.g., <code class="text-xs bg-gray-200 p-1 rounded">/help</code>).</li>
+                                <li>Since it's not a special command, it's treated as a task and passed to <code class="text-xs bg-gray-200 p-1 rounded">process_task</code>.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flow-arrow">
+                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+            </div>
+
+            <!-- STAGE 2: Agent Wakes Up -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0 h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                        <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800">Stage 2: The Agent Wakes Up</h2>
+                        <p class="mt-2 text-gray-600">A new, isolated agent session is created for your task. This ensures context from previous questions doesn't interfere.</p>
+                        <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
+                            <h3 class="font-semibold text-gray-700">Internal Process:</h3>
+                            <ul class="mt-2 list-disc list-inside text-gray-600 space-y-1 text-sm">
+                                <li><code class="text-xs bg-gray-200 p-1 rounded">run_agentic_mode</code> is called.</li>
+                                <li>A new <code class="text-xs bg-gray-200 p-1 rounded">GenericClient</code> instance is created. Its history is fresh.</li>
+                                <li>The initial conversation history is built for the API call:</li>
+                            </ul>
+                            <div class="mt-3 space-y-2">
+                                <div class="terminal-panel text-xs">
+                                    <p><span class="font-bold text-purple-400">role:</span> system</p>
+                                    <p><span class="font-bold text-purple-400">content:</span> "You are oconsole, an expert..."</p>
+                                </div>
+                                <div class="terminal-panel text-xs">
+                                    <p><span class="font-bold text-green-400">role:</span> user</p>
+                                    <p><span class="font-bold text-green-400">content:</span> "what time is it ?"</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flow-arrow">
+                 <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+            </div>
+
+            <!-- STAGE 3: The Plan -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0 h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                         <svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800">Stage 3: The Plan (Thinking Step 🧠)</h2>
+                        <p class="mt-2 text-gray-600">The agent makes its first API call. Based on its system prompt, it knows it must first create and explain its plan to the user before taking any action.</p>
+                        <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
+                            <h3 class="font-semibold text-gray-700">Internal Process:</h3>
+                            <ul class="mt-2 list-disc list-inside text-gray-600 space-y-1 text-sm">
+                                <li>The LLM analyzes the request and its rules.</li>
+                                <li>It follows **Rule #2**: "Explain Your Plan".</li>
+                                <li>It selects the <code class="text-xs bg-gray-200 p-1 rounded">explain_plan</code> tool and generates the text for the plan.</li>
+                                <li>The manager receives this instruction and displays the following output:</li>
+                            </ul>
+                        </div>
+                        <div class="mt-4">
+                            <div class="terminal-panel panel-blue">
+                                <div class="terminal-title text-blue-400">🤔 Agent's Plan</div>
+                                <p class="text-yellow-300 italic">I will run the `date` command to get the current system time.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flow-arrow">
+                 <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+            </div>
+
+            <!-- STAGE 4: Execution -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0 h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                        <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800">Stage 4: Execution ⚙️</h2>
+                        <p class="mt-2 text-gray-600">With the plan established, the agent makes a second API call. It now proceeds to execute the first action step of its plan.</p>
+                        <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
+                            <h3 class="font-semibold text-gray-700">Internal Process:</h3>
+                            <ul class="mt-2 list-disc list-inside text-gray-600 space-y-1 text-sm">
+                                <li>The LLM follows **Rule #3**: "Execute & Adapt".</li>
+                                <li>It selects the <code class="text-xs bg-gray-200 p-1 rounded">run_safe_command</code> tool with the argument <code class="text-xs bg-gray-200 p-1 rounded">date</code>.</li>
+                                <li>The <code class="text-xs bg-gray-200 p-1 rounded">CommandExecutor</code> runs the command using Python's <code class="text-xs bg-gray-200 p-1 rounded">subprocess</code> module.</li>
+                                <li>The manager receives the raw output and displays it:</li>
+                            </ul>
+                        </div>
+                        <div class="mt-4">
+                            <div class="terminal-panel panel-green">
+                                <div class="terminal-title text-green-400">✔ Success (0.01s)</div>
+                                <p class="text-cyan-300">Thu Aug  7 17:36:09 CEST 2025</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flow-arrow">
+                 <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+            </div>
+
+            <!-- STAGE 5: Final Answer -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <div class="flex items-start space-x-4">
+                    <div class="flex-shrink-0 h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                        <svg class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800">Stage 5: The Final Answer ✅</h2>
+                        <p class="mt-2 text-gray-600">The agent now has the information it needs. In its third and final API call, it determines the task is complete and formulates a user-friendly summary.</p>
+                         <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
+                            <h3 class="font-semibold text-gray-700">Internal Process:</h3>
+                            <ul class="mt-2 list-disc list-inside text-gray-600 space-y-1 text-sm">
+                                <li>The LLM follows **Rule #4**: "Final Answer Only".</li>
+                                <li>It selects the <code class="text-xs bg-gray-200 p-1 rounded">answer_question</code> tool.</li>
+                                <li>It synthesizes the raw command output into a natural language response.</li>
+                                <li>The manager receives this and displays the final, polished output:</li>
+                            </ul>
+                        </div>
+                        <div class="mt-4">
+                            <div class="terminal-panel panel-magenta">
+                                <div class="terminal-title text-magenta-400">Final Answer</div>
+                                <p class="text-green-300">The current time is Thursday, August 7, 2025 at 5:36 PM CEST.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <!-- End Workflow -->
+
+        <!-- Footer -->
+        <footer class="text-center mt-16 py-8 border-t border-gray-200">
+            <p class="text-sm text-gray-500">This workflow ensures a transparent, predictable, and robust interaction for every user request.</p>
+        </footer>
+
+    </div>
+
+</body>
+</html>
