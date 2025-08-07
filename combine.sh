@@ -38,7 +38,7 @@ OUTPUT_PATH="$TARGET_DIR/$OUTPUT"
 # Add tree visualization at the top
 echo "# Directory tree for '$TARGET_DIR'" >> "$OUTPUT_PATH"
 echo '```' >> "$OUTPUT_PATH"
-tree_ignore=".git|__pycache__|*.png|*.jpg|*.jpeg|*.gif|*.bmp|*.webp|*.ico|.env|*.md|combined_output.md|node_modules|dist|combine.sh"
+tree_ignore=".git|__pycache__|*.png|*.jpg|*.jpeg|*.gif|*.bmp|*.webp|*.ico|.env|*.md|combined_output.md|node_modules|dist|combine.sh|venv"
 for name in "${EXCLUDE_FILES[@]}"; do
     tree_ignore="$tree_ignore|$name"
 done
@@ -67,7 +67,10 @@ FIND_CMD+=(
     ! -name "*.webp"
     ! -name "*.ico"
     ! -name ".env"
+    ! -name ".python_history"
+    ! -name "memory.md"
     ! -path "*/node_modules/*"
+    ! -path "*/venv/*"
 )
 
 # Add custom --exclude-file

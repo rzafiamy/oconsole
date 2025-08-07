@@ -10,10 +10,11 @@ MODEL = os.getenv('MODEL', 'llama3.1')
 
 # --- Agent Settings ---
 AGENT_MAX_STEPS = 7 
+AGENT_MEMORY_MAX_TOKENS = 16000
 SAFE_COMMANDS = [
     "ls", "cat", "echo", "pwd", "df", "du", "wc", "grep", 
     "find", "whoami", "uname", "date", "uptime", "journalctl",
-    "ps", "netstat"
+    "ps", "netstat", "apt", "dpkg", "mkdir", "touch"
 ]
 
 # --- App Settings ---

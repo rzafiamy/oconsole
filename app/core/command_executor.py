@@ -2,6 +2,8 @@ import subprocess
 import time
 from rich.console import Console
 from rich.table import Table
+from rich.panel import Panel
+from rich.text import Text
 
 class CommandExecutor:
     def __init__(self):
@@ -29,25 +31,46 @@ class CommandExecutor:
             return {'success': False, 'error': str(e), 'elapsed_time': time.time() - start_time}
 
     def print_successful_output(self, output, elapsed_time):
-        self.console.print(f"[green]✔ Command executed successfully! ({elapsed_time:.2f}s)[/green]")
+        """
+        Prints the successful output in a styled Panel. If the output looks
+        like a table, it's rendered as a rich Table.
+        """
+        title = f"✔ Success ({elapsed_time:.2f}s)"
 
-        lines = output.strip().splitlines()
-        if not lines:
-            self.console.print("[dim]No output.[/dim]")
+        if not output.strip():
+            self.console.print(Panel("[dim]No output.[/dim]", title=f"[green]{title}[/green]", border_style="green", title_align="left"))
             return
 
-        # Attempt to create a table if the output looks tabular
+        lines = output.strip().splitlines()
+        
+        # Try to render as a table
         try:
             headers = lines[0].split()
-            if len(lines) > 1 and len(headers) > 1:
-                table = Table(show_header=True, header_style="bold magenta", border_style="dim")
+            if len(lines) > 1 and len(headers) > 1 and all(len(line.split(maxsplit=len(headers)-1)) == len(headers) for line in lines[1:]):
+                table = Table(
+                    show_header=True, 
+                    header_style="bold cyan", 
+                    border_style="dim",
+                    title_align="left"
+                    )
                 for header in headers:
-                    table.add_column(header)
+                    table.add_column(header, no_wrap=True)
 
                 for line in lines[1:]:
                     table.add_row(*line.split(maxsplit=len(headers)-1))
-                self.console.print(table)
+                
+                panel_content = table
+
             else:
                 raise ValueError("Not tabular data")
+
         except Exception:
-            self.console.print(f"[bright_cyan]{output}[/bright_cyan]")
+            # Fallback for non-tabular data
+            panel_content = Text(output, style="bright_cyan")
+
+        self.console.print(Panel(
+            panel_content, 
+            title=f"[green]{title}[/green]", 
+            border_style="green", 
+            title_align="left"
+        ))
