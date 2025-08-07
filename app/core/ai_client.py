@@ -1,46 +1,30 @@
 import config
 
 class AIClient:
-    def __init__(self, ui_helpers):
-        self.ui_helpers = ui_helpers
-        self.history = [
-            {"role": "system", "content": config.SYSTEM_PROMPT}
-        ]
+    def __init__(self):
+        self.history = [{"role": "system", "content": config.SYSTEM_PROMPT}]
 
-    def add_to_history(self, role, content):
+    def add_to_history(self, message):
         """
-        Adds a message to the conversation history.
+        Adds a complete message to the history.
+        It handles strings, dictionaries, and Pydantic models to ensure
+        the history is always a list of valid message dictionaries.
         """
-        if content is None:
-            return
-        # If the last message was from the same role, append content
-        if self.history and self.history[-1]["role"] == role:
-            # Ensure content is a string before concatenating
-            if isinstance(self.history[-1]["content"], str):
-                 self.history[-1]["content"] += str(content)
-            # If it's a list (e.g., tool calls), handle appropriately
-            else:
-                 self.history.append({"role": role, "content": content})
+        if isinstance(message, dict):
+            # It's already a dictionary (like from Ollama's client)
+            self.history.append(message)
+        elif hasattr(message, 'model_dump'):
+            # It's a Pydantic model (like from OpenAI's client), convert to dict
+            self.history.append(message.model_dump(exclude_none=True, warnings=False))
         else:
-            self.history.append({"role": role, "content": content})
-
-        # Trim history to MAX_HISTORY length
-        if len(self.history) > config.MAX_HISTORY:
-            # Keep the system prompt and the most recent interactions
-            self.history = [self.history[0]] + self.history[-config.MAX_HISTORY:]
+            # This should not be reached with the current code, but as a fallback
+            raise TypeError(f"Unsupported message type for history: {type(message)}")
 
     def purge_chat_history(self):
-        """
-        Purges the chat history, keeping only the system prompt.
-        """
-        self.history = [
-            {"role": "system", "content": config.SYSTEM_PROMPT}
-        ]
-        print("Chat history has been purged.")
+        self.history = [{"role": "system", "content": config.SYSTEM_PROMPT}]
 
-    def get_chat_response(self, prompt, tools=None, tool_choice="auto"):
-        """
-        Abstract method to be implemented by subclasses to get chat responses,
-        with optional support for tools.
-        """
-        raise NotImplementedError("Subclasses should implement this method")
+    def get_tool_response(self, prompt, tools):
+        raise NotImplementedError
+
+    def get_streaming_response(self, prompt):
+        raise NotImplementedError

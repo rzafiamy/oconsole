@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 .env
 command_history.txt
+.python_history
+venv/

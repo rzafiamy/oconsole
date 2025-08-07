@@ -1,8 +1,4 @@
-ollama
-colorama
-halo
-tqdm
-tabulate
-pexpect
 python-dotenv
-openai
+rich
+prompt-toolkit
+requests
