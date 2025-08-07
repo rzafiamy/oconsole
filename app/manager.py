@@ -6,6 +6,7 @@ from core.memory import AgentMemory
 import config
 import json
 import os
+import tiktoken
 
 from rich.console import Console
 from rich.panel import Panel
@@ -24,27 +25,52 @@ class TaskManager:
         self.command_executor = CommandExecutor()
         self.tool_executor = ToolExecutor(self.command_executor)
         self.memory = AgentMemory()
-        self.client = None
+        self.client = GenericClient()
         self.last_answer = ""
         self.last_command_info = None
         self.history = FileHistory(config.HISTORY_FILE)
+        
+        # --- NEW: Persistent conversation history ---
+        self.conversation_history = []
+        try:
+            self.tokenizer = tiktoken.get_encoding("cl100k_base")
+        except Exception:
+            self.tokenizer = None
+        
         self.memory.clear()
 
-    def get_agent_client(self):
-        client = GenericClient()
-        client.history = [{"role": "system", "content": config.AGENT_SYSTEM_PROMPT}]
-        return client
+    def _prune_history(self):
+        """Keeps the conversation history within the token limit."""
+        if not self.tokenizer or not config.AGENT_MEMORY_MAX_TOKENS:
+            return
+
+        token_count = 0
+        for message in self.conversation_history:
+            token_count += len(self.tokenizer.encode(str(message.get("content", ""))))
+
+        # Remove oldest messages (after the first user message) until token count is acceptable
+        while token_count > config.AGENT_MEMORY_MAX_TOKENS:
+            if len(self.conversation_history) > 2: # Always keep at least one user/assistant exchange
+                removed_message = self.conversation_history.pop(1) # Remove the second oldest message
+                token_count -= len(self.tokenizer.encode(str(removed_message.get("content", ""))))
+            else:
+                break # Stop if we can't prune further
+
+    def _add_to_history(self, message):
+        """Adds a message to the history and prunes if necessary."""
+        self.conversation_history.append(message)
+        self._prune_history()
 
     def print_welcome(self):
         logo = Text("oconsole", style="bold magenta")
-        tagline = Text("Your Autonomous AI Command Assistant", style="cyan")
+        tagline = Text("Your Programmatic AI Command Assistant", style="cyan")
         
         info_grid = Table.grid(padding=(0, 2))
         info_grid.add_column(style="green")
         info_grid.add_column()
         info_grid.add_row("✓ Model:", config.MODEL)
         info_grid.add_row("✓ Endpoint:", config.HOST)
-        info_grid.add_row("✓ Max Memory:", f"{config.AGENT_MEMORY_MAX_TOKENS:,} tokens")
+        info_grid.add_row("✓ Agent Mode:", "Programmatic (Conversational)")
         
         main_panel_content = Table.grid(expand=True)
         main_panel_content.add_row(Align.center(logo))
@@ -64,12 +90,13 @@ class TaskManager:
 
     def _get_explanation(self, command, output):
         explainer_client = GenericClient()
-        explainer_client.history = [{"role": "system", "content": config.EXPLAINER_SYSTEM_PROMPT}]
-        prompt = f"Command: {command}\nOutput:\n{output}"
-        explainer_client.add_user_message(prompt)
+        prompt_messages = [
+            {"role": "system", "content": config.EXPLAINER_SYSTEM_PROMPT},
+            {"role": "user", "content": f"Command: {command}\nOutput:\n{output}"}
+        ]
         
         with self.console.status("[bold green]AI is generating an explanation...", spinner="dots"):
-            response = explainer_client.get_tool_response(tools=None)
+            response = explainer_client.get_tool_response(messages=prompt_messages, tools=None)
         
         return response.get('content', 'Could not generate explanation.')
 
@@ -79,14 +106,10 @@ class TaskManager:
 
         if command == '/exit':
             return "exit"
-
+        
         elif command in ['/new', '/clear-memory']:
-            self.memory.clear()
-            self.last_answer = ""
-            self.last_command_info = None
-            if self.client:
-                self.client = self.get_agent_client()
-            self.console.print(Panel("[bold green]✔ New session started. Agent memory has been cleared.[/bold green]", border_style="green", width=70))
+            self.conversation_history = [] # Clear the persistent history
+            self.console.print(Panel("[bold green]✔ New session started. Conversational memory has been cleared.[/bold green]", border_style="green", width=70))
             return "handled"
 
         elif command in ['/cls', '/clear-screen']:
@@ -94,11 +117,12 @@ class TaskManager:
             self.print_welcome()
             return "handled"
 
+        # ... (rest of meta commands are unchanged) ...
         elif command == '/help':
             help_text = """
 [bold]Meta-Commands:[/bold]
   [cyan]/help[/cyan]                 - Show this help message.
-  [cyan]/new[/cyan] or [cyan]/clear-memory[/cyan]  - Start a new session, clearing memory.
+  [cyan]/new[/cyan] or [cyan]/clear-memory[/cyan]  - Start a new session, clearing conversational memory.
   [cyan]/exit[/cyan]                 - Exit oconsole.
   [cyan]/cls[/cyan] or [cyan]/clear-screen[/cyan]  - Clear the console screen.
 
@@ -120,7 +144,11 @@ class TaskManager:
 """
             self.console.print(Panel(help_text, title="[bold magenta]oconsole Help[/bold magenta]", border_style="magenta"))
             return "handled"
-
+        
+        elif command == '/system':
+            self.console.print(Panel(json.dumps(config.STATE_PROMPTS, indent=2), title="[cyan]Agent State Prompts[/cyan]", border_style="cyan"))
+            return "handled"
+            
         elif command == '/model':
             self.console.print(Panel(config.MODEL, title="[cyan]Current Model[/cyan]", border_style="cyan"))
             return "handled"
@@ -129,21 +157,17 @@ class TaskManager:
             self.console.print(Panel(config.HOST, title="[cyan]Current Endpoint[/cyan]", border_style="cyan"))
             return "handled"
 
-        elif command == '/system':
-            self.console.print(Panel(Markdown(config.AGENT_SYSTEM_PROMPT), title="[cyan]Agent System Prompt[/cyan]", border_style="cyan"))
-            return "handled"
-            
         elif command == '/params':
             grid = Table.grid(padding=(0, 2))
             grid.add_column(style="green", justify="right")
             grid.add_column()
             grid.add_row("Model:", config.MODEL)
             grid.add_row("Endpoint:", config.HOST)
-            grid.add_row("Max Memory Tokens:", f"{config.AGENT_MEMORY_MAX_TOKENS:,}")
             grid.add_row("Max Agent Steps:", str(config.AGENT_MAX_STEPS))
             self.console.print(Panel(grid, title="[cyan]Configuration Parameters[/cyan]", border_style="cyan"))
             return "handled"
 
+ 
         elif command == '/memory':
             self.console.print(Panel(self.memory.read(), title="[cyan]Agent Memory Log[/cyan]", border_style="cyan", expand=False))
             return "handled"
@@ -207,28 +231,30 @@ class TaskManager:
             )
             self.console.print(explanation_panel)
             return "handled"
-
         return "unhandled"
 
-    def process_task(self, user_goal):
-        self.run_agentic_mode(user_goal)
 
-    def run_agentic_mode(self, user_goal):
-        self.client = self.get_agent_client()
-        self.memory.clear()
-        
-        self.client.add_user_message(user_goal)
+    def process_task(self, user_goal):
+        self._add_to_history({"role": "user", "content": user_goal})
+        self.run_agentic_mode()
+
+    def run_agentic_mode(self):
+        current_state = "PLANNING"
 
         for i in range(config.AGENT_MAX_STEPS):
-            token_status = f"Memory: {self.client.get_token_count():,}/{config.AGENT_MEMORY_MAX_TOKENS:,} Tokens"
-            self.console.print(Rule(f"[bold blue]Agent Step {i+1}/{config.AGENT_MAX_STEPS}[/bold blue] | [yellow]{token_status}[/yellow]", style="blue"))
+            token_count = sum(len(self.tokenizer.encode(str(m.get("content", "")))) for m in self.conversation_history) if self.tokenizer else 0
+            self.console.print(Rule(f"[bold blue]Step {i+1}/{config.AGENT_MAX_STEPS} | State: {current_state} | History: {token_count} Tokens[/bold blue]", style="blue"))
+
+            system_prompt = config.STATE_PROMPTS[current_state]
+            messages_for_api = [{"role": "system", "content": system_prompt}] + self.conversation_history
             
-            with self.console.status("[bold green]Agent is reasoning...", spinner="dots"):
-                response_message = self.client.get_tool_response(tools=get_tools())
-                self.client.add_assistant_message(response_message)
+            with self.console.status("[bold green]Agent is processing...", spinner="dots"):
+                response_message = self.client.get_tool_response(messages=messages_for_api, tools=get_tools())
+            
+            self._add_to_history(response_message)
 
             if response_message.get('content'):
-                self.console.print("[bold green]✔ Agent Replied[/bold green]")
+                self.console.print("[bold green]✔ Agent Replied Directly[/bold green]")
                 self.display_final_answer(response_message['content'])
                 return
 
@@ -244,14 +270,11 @@ class TaskManager:
             
             try:
                 arguments = json.loads(tool_call['function']['arguments'])
-                
+
+                # Display logic
                 if function_name == "explain_plan":
                     plan_text = arguments.get('plan', 'No plan provided.')
-                    self.console.print(Panel(
-                        Text(plan_text, style="italic yellow"), 
-                        title="[bold blue]🤔 Agent's Plan[/bold blue]", 
-                        border_style="blue"
-                    ))
+                    self.console.print(Panel(Text(plan_text, style="italic yellow"), title="[bold blue]🤔 Agent's Plan[/bold blue]", border_style="blue"))
                 else:
                     action_table = Table.grid(padding=(0, 1))
                     action_table.add_column(style="dim"); action_table.add_column()
@@ -259,37 +282,38 @@ class TaskManager:
                     action_table.add_row("Arguments:", f"[cyan]{json.dumps(arguments, indent=2)}[/cyan]")
                     self.console.print(Panel(action_table, title="[bold dim]Agent Action[/bold dim]", border_style="dim"))
 
-                if function_name == "answer_question":
-                    self.console.print("[bold green]✔ Agent has finished the task.[/bold green]")
-                    summary = arguments.get('query', "Task completed successfully.")
-                    self.display_final_answer(summary)
-                    return
-
                 if function_name == 'run_safe_command':
-                    self.console.print(Panel(f"$ {arguments.get('command_name', '')} {arguments.get('args_string', '')}".strip(), 
-                                             border_style="green", title="[green]Executing Command[/green]", title_align="left"))
-                
+                    self.console.print(Panel(f"$ {arguments.get('command_name', '')} {arguments.get('args_string', '')}".strip(), border_style="green", title="[green]Executing Command[/green]", title_align="left"))
+
                 result_output = self.execute_tool(function_name, arguments)
-                
+
                 if function_name not in ['explain_plan', 'answer_question']:
                     if result_output.get('success'):
                         self.command_executor.print_successful_output(result_output['output'], result_output['elapsed_time'])
                         if function_name == 'run_safe_command' and result_output.get('output'):
-                             full_command = f"{arguments.get('command_name', '')} {arguments.get('args_string', '')}".strip()
-                             self.last_command_info = {'command': full_command, 'output': result_output['output']}
+                             self.last_command_info = {'command': f"{arguments.get('command_name', '')} {arguments.get('args_string', '')}".strip(), 'output': result_output['output']}
                         else:
                              self.last_command_info = None
                     else:
                         self.console.print(Panel(Text(result_output.get('error', 'An unknown error occurred.'), style="red"), title="[red]✖ Command Failed[/red]", border_style="red"))
                         self.last_command_info = None
-
-                self.client.add_tool_response_message(tool_call_id, json.dumps(result_output))
+                
+                tool_response_content = json.dumps(result_output)
+                self._add_to_history({"role": "tool", "tool_call_id": tool_call_id, "content": tool_response_content})
+                
+                if current_state == "PLANNING" and function_name == "explain_plan":
+                    current_state = "EXECUTING"
+                elif function_name == "answer_question":
+                    self.console.print("[bold green]✔ Agent has finished the task.[/bold green]")
+                    self.display_final_answer(arguments.get('query', "Task completed."))
+                    return
+                
                 self.console.print()
 
-            except (json.JSONDecodeError, TypeError):
-                error_msg = f"Error: AI generated invalid arguments for {function_name}."
+            except (json.JSONDecodeError, TypeError) as e:
+                error_msg = f"Error processing tool call: {e}"
                 self.console.print(f"[bold red]{error_msg}[/bold red]")
-                self.client.add_tool_response_message(tool_call_id, json.dumps({"success": False, "error": error_msg}))
+                self._add_to_history({"role": "tool", "tool_call_id": tool_call_id, "content": json.dumps({"success": False, "error": error_msg})})
 
         self.console.print(Panel("[bold yellow]Agent reached maximum steps and could not complete the task.[/bold yellow]", border_style="yellow"))
 
@@ -321,6 +345,7 @@ class TaskManager:
                     self.console.print()
                     continue
                 elif command_result != "unhandled":
+                    # This logic is now simpler
                     self.process_task(command_result)
                 else:
                     self.process_task(user_input)

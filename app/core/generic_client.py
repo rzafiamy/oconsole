@@ -1,75 +1,31 @@
+# app/core/generic_client.py
 import requests
 import json
 import config
-import tiktoken
 import time
 
+# This client is now STATELESS. It does not hold its own history.
+# The history is managed by the TaskManager and passed in for each call.
 class GenericClient:
     def __init__(self):
         self.base_url = config.HOST
         self.api_key = config.API_KEY
         self.model = config.MODEL
-        self.history = []
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
         }
-        try:
-            self.tokenizer = tiktoken.get_encoding("cl100k_base")
-        except Exception:
-            self.tokenizer = None
 
-    def get_token_count(self):
-        if not self.tokenizer:
-            return 0
-        
-        num_tokens = 0
-        for message in self.history:
-            num_tokens += len(self.tokenizer.encode(str(message)))
-        return num_tokens
-
-    def _prune_history(self):
-        if not self.tokenizer or not config.AGENT_MEMORY_MAX_TOKENS:
-            return
-
-        while self.get_token_count() > config.AGENT_MEMORY_MAX_TOKENS:
-            if len(self.history) > 1:
-                self.history.pop(1)
-            else:
-                break
-
-    def add_user_message(self, content):
-        self.history.append({"role": "user", "content": content})
-        self._prune_history()
-
-    def add_assistant_message(self, message_dict):
-        self.history.append(message_dict)
-        self._prune_history()
-
-    def add_tool_response_message(self, tool_call_id, content):
-        self.history.append({
-            "role": "tool",
-            "tool_call_id": tool_call_id,
-            "content": content
-        })
-        self._prune_history()
-
-    def purge_chat_history(self):
-        self.history = []
-
-    def get_tool_response(self, tools, json_schema=None):
+    def get_tool_response(self, messages, tools):
         endpoint = f"{self.base_url}/chat/completions"
         payload = {
             "model": self.model,
-            "messages": self.history,
+            "messages": messages, # Use passed-in messages
         }
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
         
-        if json_schema:
-            payload["response_format"] = { "type": "json_object" }
-
         last_error = None
         for attempt in range(3):
             try:
@@ -87,16 +43,15 @@ class GenericClient:
                 return response_json['choices'][0]['message']
             except requests.exceptions.RequestException as e:
                 last_error = e
-                time.sleep(2) # Wait 2 seconds before retrying
+                time.sleep(2)
         
         return {"role": "assistant", "content": f"API Connection Error: {last_error}"}
 
-
-    def get_streaming_response(self):
+    def get_streaming_response(self, messages):
         endpoint = f"{self.base_url}/chat/completions"
         payload = {
             "model": self.model,
-            "messages": self.history,
+            "messages": messages, # Use passed-in messages
             "stream": True
         }
         full_response = ""
@@ -121,12 +76,10 @@ class GenericClient:
                                     yield content
                             except (json.JSONDecodeError, KeyError):
                                 continue
-                self.add_assistant_message({'role': 'assistant', 'content': full_response})
-                return # Exit the generator successfully
+                return
             except requests.exceptions.RequestException as e:
                 last_error = e
                 time.sleep(2)
 
         error_message = f"API Connection Error: {last_error}"
         yield error_message
-        self.add_assistant_message({'role': 'assistant', 'content': error_message})
