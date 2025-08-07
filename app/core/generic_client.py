@@ -7,7 +7,10 @@ class GenericClient:
         self.base_url = config.HOST
         self.api_key = config.API_KEY
         self.model = config.MODEL
-        self.history = [{"role": "system", "content": config.SYSTEM_PROMPT}]
+        # --- THIS IS THE FIX ---
+        # History is now initialized empty. The system prompt is set by the TaskManager.
+        self.history = []
+        # --- END OF FIX ---
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
@@ -19,29 +22,51 @@ class GenericClient:
     def add_assistant_message(self, message_dict):
         self.history.append(message_dict)
 
+    def add_tool_response_message(self, tool_call_id, content):
+        self.history.append({
+            "role": "tool",
+            "tool_call_id": tool_call_id,
+            "content": content
+        })
+
     def purge_chat_history(self):
-        self.history = [{"role": "system", "content": config.SYSTEM_PROMPT}]
+        # This method is now effectively handled by creating a new client instance
+        # but we can leave it for clarity.
+        self.history = []
 
     def get_tool_response(self, tools):
-        """Gets a standard, non-streaming response from any OpenAI-compatible API."""
+        """
+        Gets a standard, non-streaming response. This function ONLY uses 'return'.
+        """
         endpoint = f"{self.base_url}/chat/completions"
         payload = {
             "model": self.model,
             "messages": self.history,
-            "tools": tools,
-            "tool_choice": "auto"
         }
+        if tools:
+            payload["tools"] = tools
+            payload["tool_choice"] = "auto"
+
         try:
             response = requests.post(endpoint, headers=self.headers, json=payload, timeout=60)
             response.raise_for_status()
-            response_json = response.json()
+
+            try:
+                response_json = response.json()
+            except json.JSONDecodeError:
+                return {"role": "assistant", "content": "API Error: Received an invalid response from the server."}
+            
+            if not response_json or 'choices' not in response_json or not response_json['choices']:
+                return {"role": "assistant", "content": "API Error: Received an empty or malformed response from the server."}
+
             return response_json['choices'][0]['message']
         except requests.exceptions.RequestException as e:
-            # Return an error message in the expected format
-            return {"role": "assistant", "content": f"API Error: {e}"}
+            return {"role": "assistant", "content": f"API Connection Error: {e}"}
 
     def get_streaming_response(self):
-        """Gets a streaming response from any OpenAI-compatible API."""
+        """
+        Gets a streaming response. This function ONLY uses 'yield'.
+        """
         endpoint = f"{self.base_url}/chat/completions"
         payload = {
             "model": self.model,
@@ -66,10 +91,10 @@ class GenericClient:
                                 full_response += content
                                 yield content
                         except (json.JSONDecodeError, KeyError):
-                            continue # Ignore empty or malformed lines
+                            continue
         except requests.exceptions.RequestException as e:
-            error_message = f"API Error: {e}"
+            error_message = f"API Connection Error: {e}"
             full_response = error_message
             yield error_message
-
+        
         self.add_assistant_message({'role': 'assistant', 'content': full_response})
